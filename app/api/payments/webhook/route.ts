@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { settleOrder, verifyWebhook } from "@/lib/payments";
+import { reportError } from "@/lib/report";
 
 export const runtime = "nodejs";
 
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     // A 5xx makes Cashfree retry later.
-    console.error("payment webhook failed", err);
+    reportError("payment webhook", err, { orderId });
     return NextResponse.json({ error: "Try again" }, { status: 500 });
   }
 }

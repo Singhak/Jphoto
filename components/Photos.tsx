@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { pieceLabel } from "@/lib/catalog";
 import { STYLES } from "@/lib/pipeline/presets";
-import { type Creation, downloadFiles, useStore } from "@/lib/store";
+import { type Creation, downloadFiles, useStore, ZIP_FROM } from "@/lib/store";
 import { CompareSlider } from "./CompareSlider";
 import { Icon } from "./icons";
 import { ShareDialog } from "./ShareDialog";
@@ -70,7 +70,7 @@ export function PickedBar({ ids, onClear }: { ids: string[]; onClear: () => void
             disabled={busy}
             className="btn-light ml-auto"
           >
-            <Icon.download className="size-4" /> {busy ? "Saving…" : "Download"}
+            <Icon.download className="size-4" /> {busy ? "Saving…" : ids.length >= ZIP_FROM ? "Download zip" : "Download"}
           </button>
         )}
       </div>

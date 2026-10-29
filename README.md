@@ -28,12 +28,14 @@ Open http://localhost:3000. The landing page is public; the studio needs Google 
 | `STORAGE_DRIVER` and `S3_*` | Where photos are kept. Use `s3` in production; `local` writes to `.cache/storage`. |
 | `NEXT_PUBLIC_MODEL_LOOKS` | `1` shows model looks. Off until exact mode is built. Read at build time. |
 | `LIMIT_*` | Free photo checks and previews per account (see `lib/limits.ts`). |
+| `NEXT_PUBLIC_SENTRY_DSN` | Error monitoring in Sentry, server and browser. Off when empty. Read at build time. Add `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` at build time for readable stack traces. |
 
 ## How it fits together
 
 - `lib/pipeline/`: the image pipeline: cutout, photo checks, scene generation, paste-back, fidelity check.
 - `app/api/extract`, `app/api/render`: photo check and preview, both free and capped by `lib/limits.ts`.
-- `app/api/downloads`, `app/api/renders/[id]`: downloading is the only step that spends a credit (`lib/account.ts`).
+- `app/api/downloads`, `app/api/renders/[id]`: downloading is the only step that spends a credit (`lib/account.ts`). Four or more photos come as one streamed zip from `app/api/downloads/zip` (`lib/zip.ts`).
+- `instrumentation.ts`, `instrumentation-client.ts`, `lib/report.ts`: Sentry. Errors a route catches and turns into a friendly message are sent with `reportError`, so they still reach us.
 - `app/api/payments/*` and `lib/payments.ts`: Cashfree orders. Credits are added only after asking Cashfree that the order is paid, exactly once, whether the webhook or the jeweller's return gets there first.
 - `app/(site)/`: public landing, privacy, terms, refunds and contact pages. `app/(app)/`: the signed-in studio.
 

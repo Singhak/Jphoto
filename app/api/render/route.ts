@@ -6,6 +6,7 @@ import { MODEL_LOOKS_ON } from "@/lib/catalog";
 import { takeFree } from "@/lib/limits";
 import { PIECE_TYPES, renderShot, STYLES } from "@/lib/pipeline";
 import { isId, loadCutout, saveShot } from "@/lib/renders";
+import { reportError } from "@/lib/report";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
     const creation = await addCreation(userId, { id, piece, styleId, collection });
     return NextResponse.json({ ...stats, id, creation });
   } catch (err) {
-    console.error("render failed", err);
+    reportError("render", err, { piece, styleId });
     return NextResponse.json({ error: "This style could not be made right now. You have not been charged." }, { status: 500 });
   }
 }

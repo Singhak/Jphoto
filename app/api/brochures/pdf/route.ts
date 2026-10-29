@@ -3,6 +3,7 @@ import { z } from "zod";
 import { brochuresUnlocked, getBrochure, getShop } from "@/lib/account";
 import { currentUserId, unauthorized } from "@/lib/auth";
 import { brochurePdf } from "@/lib/brochure-pdf";
+import { reportError } from "@/lib/report";
 
 export const runtime = "nodejs";
 
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
     const pdf = await brochurePdf(userId, brochure, shop);
     return new Response(new Uint8Array(pdf), { headers: { "Content-Type": "application/pdf", "Cache-Control": "private, no-store" } });
   } catch (err) {
-    console.error("brochure pdf", err);
+    reportError("brochure pdf", err, { collection: parsed.data.collection });
     return NextResponse.json({ error: "Couldn’t make the PDF. Try again in a minute." }, { status: 500 });
   }
 }

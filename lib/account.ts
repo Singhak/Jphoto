@@ -126,6 +126,15 @@ export async function canDownload(userId: string, id: string) {
   return Boolean(row);
 }
 
+/** The photos among these ids that this account has paid for, with what's needed to name their files. */
+export function paidCreations(userId: string, ids: string[]) {
+  return db
+    .select({ id: creations.id, piece: creations.piece, styleId: creations.styleId, collection: creations.collection, designName: creations.designName, designCode: creations.designCode })
+    .from(creations)
+    .where(and(inArray(creations.id, ids), eq(creations.userId, userId), sql`${creations.downloadedAt} is not null`))
+    .orderBy(creations.collection, creations.createdAt);
+}
+
 /** Puts a downloaded photo in the review queue. Only photos already paid for can be flagged, once. */
 export async function flagCreation(userId: string, id: string, note: string) {
   const flagged = await db

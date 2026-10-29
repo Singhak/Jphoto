@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { currentUserId, unauthorized } from "@/lib/auth";
 import { ownsOrder, settleOrder } from "@/lib/payments";
+import { reportError } from "@/lib/report";
 
 export const runtime = "nodejs";
 
@@ -17,7 +18,7 @@ export async function POST(req: Request) {
   try {
     return NextResponse.json({ state: await settleOrder(parsed.data.orderId) });
   } catch (err) {
-    console.error("payment verify failed", err);
+    reportError("payment verify", err, { orderId: parsed.data.orderId });
     return NextResponse.json({ state: "pending" });
   }
 }

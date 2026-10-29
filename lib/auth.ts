@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
@@ -25,6 +26,8 @@ export const auth = betterAuth({
 /** The signed-in user's id, or null. Every API route that touches account data checks this itself. */
 export async function currentUserId(): Promise<string | null> {
   const session = await auth.api.getSession({ headers: await headers() });
+  // Errors in this request show which account hit them (the id only, not the email).
+  if (session) Sentry.setUser({ id: session.user.id });
   return session?.user.id ?? null;
 }
 

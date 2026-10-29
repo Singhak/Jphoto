@@ -3,6 +3,7 @@ import { currentUserId, unauthorized } from "@/lib/auth";
 import { takeFree } from "@/lib/limits";
 import { extractJewellery, PIECE_TYPES, type PieceType } from "@/lib/pipeline";
 import { saveCutout } from "@/lib/renders";
+import { reportError, reportWarning } from "@/lib/report";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -28,15 +29,15 @@ export async function POST(req: Request) {
     const cutoutId = await saveCutout(userId, cutout);
     // Outages on our side are logged, not shown: they aren't about the jeweller's photo.
     const internal = cutout.warnings.filter((w) => w.startsWith("Prop check skipped"));
-    if (internal.length) console.warn("extract:", internal.join("; "));
+    if (internal.length) reportWarning("extract", internal.join("; "));
     const warnings = cutout.warnings.filter((w) => !internal.includes(w));
     // Drop API error details like "(Gemini … failed (429): …)" from what the jeweller reads.
     const apiDetail = /\s*\([^()]*failed \(\d+\)[^()]*\)/g;
-    if (cutout.problems.some((p) => /failed \(\d+\)/.test(p))) console.warn("extract:", cutout.problems.join("; "));
+    if (cutout.problems.some((p) => /failed \(\d+\)/.test(p))) reportWarning("extract", cutout.problems.join("; "));
     const problems = cutout.problems.map((p) => p.replace(apiDetail, ""));
     return NextResponse.json({ cutoutId, problems, warnings });
   } catch (err) {
-    console.error("extract failed", err);
+    reportError("extract", err, { piece });
     return NextResponse.json({ error: "We couldn't read this photo. Try a JPG or PNG taken with your phone camera." }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@ import { fill, removeBackground, uploadPng } from "./fal";
 import { type Completion, completeCutout } from "./complete";
 import { checkFidelity, type FidelityResult } from "./fidelity";
 import { findProps, geminiScene, hasGeminiKey, judgeShot, type JudgeResult } from "./gemini";
+import { reportWarning } from "../report";
 import { removeBackgroundLocal } from "./local-cutout";
 import {
   compositeFinal,
@@ -142,7 +143,7 @@ async function cutoutEngine(prepared: Buffer): Promise<Buffer> {
     return await removeBackground(await uploadPng(prepared));
   } catch (err) {
     if (forced === "fal") throw err;
-    console.warn(`fal cutout failed, using the local model instead: ${(err as Error).message.split("\n")[0]}`);
+    reportWarning("fal cutout", `failed, using the local model instead: ${(err as Error).message.split("\n")[0]}`);
     return removeBackgroundLocal(prepared);
   }
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { currentUserId, unauthorized } from "@/lib/auth";
 import { createOrder } from "@/lib/payments";
+import { reportError } from "@/lib/report";
 
 export const runtime = "nodejs";
 
@@ -20,7 +21,7 @@ export async function POST(req: Request) {
     if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
     return NextResponse.json(result);
   } catch (err) {
-    console.error("payment order failed", err);
+    reportError("payment order", err, { photos: parsed.data.photos });
     return NextResponse.json({ error: "Couldn't start the payment. No money was taken. Try again in a minute." }, { status: 502 });
   }
 }

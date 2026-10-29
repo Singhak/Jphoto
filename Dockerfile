@@ -8,6 +8,13 @@ COPY . .
 # NEXT_PUBLIC_ settings are baked into the browser code at build time.
 ARG NEXT_PUBLIC_MODEL_LOOKS=""
 ENV NEXT_PUBLIC_MODEL_LOOKS=$NEXT_PUBLIC_MODEL_LOOKS
+ARG NEXT_PUBLIC_SENTRY_DSN=""
+ARG NEXT_PUBLIC_SENTRY_ENVIRONMENT=""
+ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN NEXT_PUBLIC_SENTRY_ENVIRONMENT=$NEXT_PUBLIC_SENTRY_ENVIRONMENT
+# Optional: uploads source maps to Sentry during the build. Used by the build stage only, not in the final image.
+ARG SENTRY_AUTH_TOKEN=""
+ARG SENTRY_ORG=""
+ARG SENTRY_PROJECT=""
 RUN npm run build
 
 FROM node:20-bookworm-slim

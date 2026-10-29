@@ -189,8 +189,26 @@ function loadCashfree(): Promise<CashfreeFactory> {
   });
 }
 
-/** Starts a browser download for each photo. Call after chargeDownloads succeeds. TODO: one zip from the server for big selections. */
+/** From this many photos on, they come as one zip. Fewer come as separate images, which phones put straight in the gallery. */
+export const ZIP_FROM = 4;
+
+/** Starts the browser download of these photos. Call after chargeDownloads succeeds. */
 export function downloadFiles(ids: string[]) {
+  if (ids.length >= ZIP_FROM) {
+    // A real form post, so the browser streams the zip to disk itself; the page stays where it is.
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = "/api/downloads/zip";
+    const field = document.createElement("input");
+    field.type = "hidden";
+    field.name = "ids";
+    field.value = ids.join(",");
+    form.appendChild(field);
+    document.body.appendChild(form);
+    form.submit();
+    form.remove();
+    return;
+  }
   ids.forEach((id, i) =>
     setTimeout(() => {
       const a = document.createElement("a");
