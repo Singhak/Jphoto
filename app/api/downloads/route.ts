@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { chargeDownloads } from "@/lib/account";
 import { currentUserId, unauthorized } from "@/lib/auth";
-import { isId } from "@/lib/renders";
+import { isId, readPrintJpeg } from "@/lib/renders";
 
 export const runtime = "nodejs";
 
@@ -16,7 +16,13 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Bad request" }, { status: 400 });
 
   const result = await chargeDownloads(userId, parsed.data.ids);
-  if (result.ok) return NextResponse.json(result);
+  if (result.ok) {
+    // Makes the brochure-size copies now, one at a time in the background, so a brochure PDF later is quick.
+    void (async () => {
+      for (const id of parsed.data.ids) await readPrintJpeg(userId, id).catch(() => {});
+    })();
+    return NextResponse.json(result);
+  }
   if (result.reason === "short") return NextResponse.json({ error: "Not enough photos left. Top up to download these." }, { status: 402 });
   return NextResponse.json({ error: "Some of these photos were not found." }, { status: 404 });
 }

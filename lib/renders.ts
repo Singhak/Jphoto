@@ -49,6 +49,21 @@ export async function saveShot(userId: string, png: Buffer): Promise<string> {
 export const readShot = (userId: string, id: string) => storage.get(key(userId, "renders", id, ".png"));
 export const readPreview = (userId: string, id: string) => storage.get(key(userId, "renders", id, ".preview.jpg"));
 
+/**
+ * A smaller JPEG of a finished shot for brochure PDFs: big enough to print sharp at A4, a tenth of the PNG's size.
+ * Made the first time a brochure needs it and kept, so later brochures reuse it.
+ */
+export async function readPrintJpeg(userId: string, id: string): Promise<Buffer> {
+  const k = key(userId, "renders", id, ".print.jpg");
+  try {
+    return await storage.get(k);
+  } catch {
+    const jpeg = await sharp(await readShot(userId, id)).resize({ width: 1400, withoutEnlargement: true }).jpeg({ quality: 82, mozjpeg: true }).toBuffer();
+    await storage.put(k, jpeg, "image/jpeg");
+    return jpeg;
+  }
+}
+
 /** Smaller, watermarked copy shown before the jeweller spends a credit. */
 async function preview(png: Buffer): Promise<Buffer> {
   const width = 640;

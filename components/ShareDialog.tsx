@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { specLine } from "@/lib/brochure";
 import { pieceLabel } from "@/lib/catalog";
 import { FRAMES, loadPhoto, renderFrame, shareOrDownload, toFile } from "@/lib/share-frames";
 import { type Creation, useStore } from "@/lib/store";
@@ -17,14 +18,15 @@ export function ShareDialog({ item, onClose }: { item: Creation; onClose: () => 
   const { shopName, phone } = useStore();
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [frameId, setFrameId] = useState(FRAMES[0].id);
-  const [title, setTitle] = useState(() => pieceLabel(item.piece));
-  const [detail, setDetail] = useState("");
+  // Starts with what the jeweller typed for this piece in a brochure, if anything.
+  const [title, setTitle] = useState(() => item.details.name || pieceLabel(item.piece));
+  const [detail, setDetail] = useState(() => specLine(item.details));
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   const [preview, setPreview] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const share = canShareFiles();
-  const text = { title: title.trim(), detail: detail.trim(), code: "", shopName, phone };
+  const text = { title: title.trim(), detail: detail.trim(), code: item.details.code, shopName, phone };
 
   useEffect(() => {
     loadPhoto(item.id).then(setImg, () => setError("Couldn’t load this photo. Check your internet and try again."));
@@ -37,7 +39,7 @@ export function ShareDialog({ item, onClose }: { item: Creation; onClose: () => 
     let gone = false;
     (async () => {
       for (const f of FRAMES) {
-        const url = await toUrl(await renderFrame(f.id, img, { title: pieceLabel(item.piece), detail: "", code: "", shopName, phone }));
+        const url = await toUrl(await renderFrame(f.id, img, { title: item.details.name || pieceLabel(item.piece), detail: specLine(item.details), code: item.details.code, shopName, phone }));
         if (gone) return URL.revokeObjectURL(url);
         urls = { ...urls, [f.id]: url };
         setThumbs(urls);
@@ -47,7 +49,7 @@ export function ShareDialog({ item, onClose }: { item: Creation; onClose: () => 
       gone = true;
       Object.values(urls).forEach(URL.revokeObjectURL);
     };
-  }, [img, item.piece, shopName, phone]);
+  }, [img, item.piece, item.details, shopName, phone]);
 
   // The big preview follows the text as it's typed, a moment after the last key.
   const key = JSON.stringify([frameId, text]);

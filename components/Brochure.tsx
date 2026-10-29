@@ -7,8 +7,9 @@ import { mobileDigits } from "@/lib/catalog";
 import { display, loadPhoto, renderFrame, toFile } from "@/lib/share-frames";
 
 /**
- * The printed brochure: A4 pages laid out in millimetres, so "Save as PDF" from the browser gives the same pages.
- * Photos are the full-size downloads, shown at their own 4:5 shape so no part of a piece is ever cropped off.
+ * On-screen preview of the brochure: A4 pages laid out in millimetres. The PDF itself is drawn on the server by
+ * lib/brochure-pdf.ts with the same layout: change both together.
+ * Photos are shown at their own 4:5 shape so no part of a piece is ever cropped off.
  */
 
 export interface Shop {
@@ -172,7 +173,7 @@ function Page({ bg, ink, children }: { bg: string; ink: string; children: React.
   return (
     <section
       style={{ background: bg, color: ink }}
-      className="brochure-page flex h-[297mm] w-[210mm] shrink-0 flex-col overflow-hidden px-[15mm] py-[14mm] font-sans shadow-xl print:shadow-none"
+      className="flex h-[297mm] w-[210mm] shrink-0 flex-col overflow-hidden px-[15mm] py-[14mm] font-sans shadow-xl"
     >
       {children}
     </section>

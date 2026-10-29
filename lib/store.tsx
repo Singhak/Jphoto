@@ -51,6 +51,8 @@ interface Store extends State {
   downloadedCount: number;
   loadBrochure: (collection: string) => Promise<Brochure | null>;
   saveBrochure: (brochure: Brochure) => Promise<void>;
+  /** The saved brochure as a PDF, made on the server. */
+  brochurePdf: (collection: string) => Promise<Blob>;
   signOut: () => Promise<void>;
 }
 
@@ -125,6 +127,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       loadBrochure: async (collection) => (await api(`/api/brochures?collection=${encodeURIComponent(collection)}`)).brochure,
       saveBrochure: async (brochure) => {
         await api("/api/brochures", { method: "PUT", body: JSON.stringify(brochure) });
+      },
+      brochurePdf: async (collection) => {
+        const res = await fetch("/api/brochures/pdf", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ collection }) });
+        if (res.status === 401) {
+          window.location.href = "/login";
+          throw new Error("Signed out");
+        }
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Couldn’t make the PDF. Try again.");
+        return res.blob();
       },
       signOut: async () => {
         await authClient.signOut();

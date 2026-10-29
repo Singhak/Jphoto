@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { boolean, check, index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
-import type { BrochureItem } from "../brochure";
+import type { BrochureLayoutItem } from "../brochure";
 
 /**
  * Plain Postgres tables: nothing here depends on the host, so the database can move
@@ -118,6 +118,12 @@ export const creations = pgTable(
     piece: text("piece").notNull(),
     styleId: text("style_id").notNull(),
     collection: text("collection").notNull(),
+    /** What the jeweller types about the piece (brochures, share frames). Blank means "don't print it". */
+    designName: text("design_name").notNull().default(""),
+    designCode: text("design_code").notNull().default(""),
+    purity: text("purity").notNull().default(""),
+    /** Grams, as typed: "42.6". */
+    weight: text("weight").notNull().default(""),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     /** Set when the credit is spent; downloading again after that is free. */
     downloadedAt: timestamp("downloaded_at", { withTimezone: true }),
@@ -176,8 +182,8 @@ export const brochures = pgTable(
     template: text("template").notNull(),
     title: text("title").notNull(),
     subtitle: text("subtitle").notNull(),
-    /** In page order. Only downloaded photos from this collection (checked in lib/account.ts). */
-    items: jsonb("items").$type<BrochureItem[]>().notNull(),
+    /** In page order. Only downloaded photos from this collection (checked in lib/account.ts). Name, weight and so on live on the photo. */
+    items: jsonb("items").$type<BrochureLayoutItem[]>().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("brochures_user_collection_idx").on(t.userId, t.collection)],

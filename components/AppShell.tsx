@@ -20,8 +20,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const active = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   return (
-    <div className="min-h-dvh pb-20 md:pb-0 print:pb-0">
-      <header className="sticky top-0 z-30 print:hidden border-b border-line bg-bg/90 backdrop-blur">
+    <div className="min-h-dvh pb-20 md:pb-0">
+      <header className="sticky top-0 z-30 border-b border-line bg-bg/90 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-4 md:px-6">
           <Link href="/studio" className="mr-4 flex items-center gap-2">
             <Icon.logo className="size-6 text-light" />
@@ -60,9 +60,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-6 md:px-6 print:max-w-none print:p-0">{children}</main>
+      <main className="mx-auto max-w-7xl px-4 py-6 md:px-6">{children}</main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 print:hidden grid grid-cols-3 border-t border-line bg-panel md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 border-t border-line bg-panel md:hidden">
         {NAV.map(({ href, label, icon: I }) => (
           <Link key={href} href={href} className={`flex flex-col items-center gap-1 py-2.5 text-[11px] ${active(href) ? "text-light" : "text-dim"}`}>
             <I className="size-5" />

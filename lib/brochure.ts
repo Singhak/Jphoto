@@ -10,18 +10,31 @@ export const BROCHURE_UNLOCK = 15;
 
 export const PURITIES = ["24K", "22K", "18K", "14K", "Silver", "Platinum"] as const;
 
-export const BrochureItem = z.object({
-  creationId: z.string(),
+/** What a jeweller knows about one piece. Saved on the photo, so a brochure or share frame made later starts filled in. */
+export const PieceDetails = z.object({
   name: z.string().trim().max(60),
   code: z.string().trim().max(30),
   purity: z.enum(PURITIES).or(z.literal("")),
-  /** Grams, as typed: "42.6". Printed as "approx. 42.6 g". */
-  weight: z.string().trim().max(12),
+  /** Grams, digits only: "42.6". Printed as "approx. 42.6 g"; blank leaves it off. */
+  weight: z.string().trim().regex(/^(\d{1,5}(\.\d{1,3})?)?$/, "Weight in grams, like 18.4"),
+});
+export type PieceDetails = z.infer<typeof PieceDetails>;
+
+/** A photo's place in one brochure. */
+export const BrochureLayoutItem = z.object({
+  creationId: z.string(),
   /** Gets a page of its own with this line under it. */
   featured: z.boolean(),
   note: z.string().trim().max(240),
 });
+export type BrochureLayoutItem = z.infer<typeof BrochureLayoutItem>;
+
+/** The browser sends and receives both together; the server stores them apart. */
+export const BrochureItem = BrochureLayoutItem.extend(PieceDetails.shape);
 export type BrochureItem = z.infer<typeof BrochureItem>;
+
+/** Keeps only what can be typed as grams: digits and one dot. */
+export const cleanGrams = (s: string) => s.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1").slice(0, 8);
 
 export const Brochure = z.object({
   collection: z.string().min(1).max(120),
@@ -69,5 +82,5 @@ export const TEMPLATES: Record<TemplateId, { label: string; blurb: string; cover
 export const PER_GRID_PAGE = 6;
 
 /** "22K · approx. 42.6 g", skipping whatever is blank. */
-export const specLine = (item: Pick<BrochureItem, "purity" | "weight">) =>
-  [item.purity, item.weight && `approx. ${item.weight.replace(/\s*g$/i, "")} g`].filter(Boolean).join(" · ");
+export const specLine = (item: Pick<PieceDetails, "purity" | "weight">) =>
+  [item.purity, item.weight && `approx. ${item.weight} g`].filter(Boolean).join(" · ");

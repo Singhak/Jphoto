@@ -1,5 +1,5 @@
 import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
-import { BROCHURE_UNLOCK, type Brochure } from "./brochure";
+import { BROCHURE_UNLOCK, type Brochure, type PieceDetails } from "./brochure";
 import { WELCOME_CREDITS } from "./catalog";
 import { db } from "./db";
 import { brochures, creations, creditLedger, profiles, user } from "./db/schema";
@@ -16,6 +16,7 @@ export interface Creation {
   createdAt: number;
   downloaded: boolean;
   flagged?: boolean;
+  details: PieceDetails;
 }
 export type LedgerKind = (typeof creditLedger.kind.enumValues)[number];
 export interface LedgerEntry {
@@ -33,7 +34,12 @@ const toCreation = (c: typeof creations.$inferSelect): Creation => ({
   createdAt: c.createdAt.getTime(),
   downloaded: c.downloadedAt !== null,
   flagged: c.flaggedAt !== null,
+  details: detailsOf(c),
 });
+
+function detailsOf(c: typeof creations.$inferSelect): PieceDetails {
+  return { name: c.designName, code: c.designCode, purity: c.purity as PieceDetails["purity"], weight: c.weight };
+}
 
 /** Makes the profile with the welcome credits on first visit. Safe to call on every request. */
 export async function ensureProfile(userId: string) {
@@ -147,15 +153,28 @@ async function downloadedCount(userId: string) {
 
 export const brochuresUnlocked = async (userId: string) => (await downloadedCount(userId)) >= BROCHURE_UNLOCK;
 
-/** The saved brochure for a collection, or null if the jeweller hasn't made one yet. */
+/** The saved brochure for a collection, with each photo's details, or null if the jeweller hasn't made one yet. */
 export async function getBrochure(userId: string, collection: string): Promise<Brochure | null> {
   const [row] = await db.select().from(brochures).where(and(eq(brochures.userId, userId), eq(brochures.collection, collection)));
-  return row ? { collection: row.collection, template: row.template as Brochure["template"], title: row.title, subtitle: row.subtitle, items: row.items } : null;
+  if (!row) return null;
+  const ids = row.items.map((i) => i.creationId);
+  const photos = ids.length
+    ? await db.select().from(creations).where(and(eq(creations.userId, userId), inArray(creations.id, ids), sql`${creations.downloadedAt} is not null`))
+    : [];
+  const byId = new Map(photos.map((c) => [c.id, c]));
+  const items = row.items.flatMap(({ creationId, featured, note }) => {
+    const c = byId.get(creationId);
+    return c ? [{ creationId, featured, note, ...detailsOf(c) }] : [];
+  });
+  return { collection: row.collection, template: row.template as Brochure["template"], title: row.title, subtitle: row.subtitle, items };
 }
 
 export type SaveBrochureResult = { ok: true } | { ok: false; reason: "locked" | "bad-photos" };
 
-/** Only photos this jeweller has paid for, from this collection, can go in: the brochure shows them full size. */
+/**
+ * Only photos this jeweller has paid for, from this collection, can go in: the brochure shows them full size.
+ * Each photo's name, code, purity and weight are saved on the photo itself, so they are there next time.
+ */
 export async function saveBrochure(userId: string, b: Brochure): Promise<SaveBrochureResult> {
   if (!(await brochuresUnlocked(userId))) return { ok: false, reason: "locked" };
   const ids = b.items.map((i) => i.creationId);
@@ -167,10 +186,29 @@ export async function saveBrochure(userId: string, b: Brochure): Promise<SaveBro
       .where(and(eq(creations.userId, userId), eq(creations.collection, b.collection), inArray(creations.id, ids), sql`${creations.downloadedAt} is not null`));
     if (rows.length !== ids.length) return { ok: false, reason: "bad-photos" };
   }
-  const values = { template: b.template, title: b.title, subtitle: b.subtitle, items: b.items, updatedAt: new Date() };
-  await db
-    .insert(brochures)
-    .values({ userId, collection: b.collection, ...values })
-    .onConflictDoUpdate({ target: [brochures.userId, brochures.collection], set: values });
+  const layout = b.items.map(({ creationId, featured, note }) => ({ creationId, featured, note }));
+  const values = { template: b.template, title: b.title, subtitle: b.subtitle, items: layout, updatedAt: new Date() };
+  await db.transaction(async (tx) => {
+    for (const i of b.items) {
+      await tx
+        .update(creations)
+        .set({ designName: i.name, designCode: i.code, purity: i.purity, weight: i.weight })
+        .where(and(eq(creations.id, i.creationId), eq(creations.userId, userId)));
+    }
+    await tx
+      .insert(brochures)
+      .values({ userId, collection: b.collection, ...values })
+      .onConflictDoUpdate({ target: [brochures.userId, brochures.collection], set: values });
+  });
   return { ok: true };
+}
+
+/** The shop details printed on brochures. */
+export async function getShop(userId: string) {
+  await ensureProfile(userId);
+  const [p] = await db
+    .select({ shopName: profiles.shopName, phone: profiles.phone, address: profiles.address, city: profiles.city, gstin: profiles.gstin, hours: profiles.hours })
+    .from(profiles)
+    .where(eq(profiles.userId, userId));
+  return p;
 }
