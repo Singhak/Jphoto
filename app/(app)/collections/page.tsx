@@ -53,7 +53,7 @@ export default function CollectionsPage() {
               <span className="text-sm text-dim">{items.length} photo{items.length === 1 ? "" : "s"}</span>
               <button
                 onClick={() => setPicked((p) => (allPicked ? p.filter((id) => !ids.includes(id)) : [...new Set([...p, ...ids])]))}
-                className="ml-auto text-sm text-light hover:underline"
+                className="-my-2 ml-auto py-2 text-sm text-light hover:underline"
               >
                 {allPicked ? "Unpick all" : "Pick all"}
               </button>

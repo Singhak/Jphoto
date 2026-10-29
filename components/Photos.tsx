@@ -21,9 +21,11 @@ export function PhotoTile({ id, caption, picked, onPick, onOpen, downloaded }: {
       <button
         onClick={onPick}
         aria-label={picked ? "Unpick" : "Pick"}
-        className={`absolute top-2 left-2 flex size-7 items-center justify-center rounded-md border-2 ${picked ? "border-light bg-light text-light-ink" : "border-white/70 bg-black/30 text-transparent group-hover:text-white/60"}`}
+        className="absolute top-0 left-0 flex size-11 items-center justify-center"
       >
-        <Icon.check className="size-4" />
+        <span className={`flex size-7 items-center justify-center rounded-md border-2 ${picked ? "border-light bg-light text-light-ink" : "border-white/70 bg-black/30 text-transparent group-hover:text-white/60"}`}>
+          <Icon.check className="size-4" />
+        </span>
       </button>
       {downloaded && <span className="absolute top-2 right-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-ok">SAVED</span>}
       <p className="truncate px-2.5 py-2 text-xs text-dim">{caption}</p>
@@ -41,7 +43,7 @@ export function PickedBar({ ids, onClear }: { ids: string[]; onClear: () => void
   return (
     <div className="fixed inset-x-0 bottom-16 z-40 px-4 md:bottom-6">
       <div className="mx-auto flex max-w-xl items-center gap-3 rounded-xl border border-line bg-raised p-3 shadow-2xl shadow-black/50">
-        <button onClick={onClear} className="rounded-md p-1.5 text-dim hover:text-text" aria-label="Clear picks">
+        <button onClick={onClear} className="-m-1 rounded-md p-2.5 text-dim hover:text-text" aria-label="Clear picks">
           <Icon.x className="size-4" />
         </button>
         <p className="text-sm">

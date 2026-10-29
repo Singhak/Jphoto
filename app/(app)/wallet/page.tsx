@@ -68,7 +68,7 @@ export default function WalletPage() {
               className={`rounded-lg border py-3 text-center transition ${i === choice ? "border-light bg-light/10" : "border-line hover:border-dim"}`}
             >
               <span className="block font-head text-lg font-bold tabular-nums">{t.photos}</span>
-              <span className="text-[10px] text-dim">photos</span>
+              <span className="text-[11px] text-dim">photos</span>
             </button>
           ))}
         </div>

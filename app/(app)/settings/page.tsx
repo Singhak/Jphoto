@@ -61,7 +61,7 @@ export default function SettingsPage() {
           onClick={() => {
             if (confirm("Clear everything saved on this device?")) reset();
           }}
-          className="mt-3 text-sm text-bad hover:underline"
+          className="mt-1 py-2 text-sm text-bad hover:underline"
         >
           Clear data on this device
         </button>

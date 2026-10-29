@@ -174,7 +174,7 @@ export default function StudioPage() {
   }
 
   return (
-    <div className="grid gap-6 pb-24 lg:grid-cols-[300px_1fr]">
+    <div className="grid gap-6 pb-40 md:pb-24 lg:grid-cols-[300px_1fr]">
       {/* Tray: the jeweller's photos, each checked and tagged. */}
       <aside className="space-y-3 lg:sticky lg:top-20 lg:self-start">
         <div className="flex items-center justify-between">
@@ -280,20 +280,22 @@ export default function StudioPage() {
               <Icon.folder className="size-4 shrink-0 text-dim" />
               <input value={collection} onChange={(e) => setCollection(e.target.value)} className="field border-transparent bg-transparent px-1 py-1" aria-label="Collection name" />
             </label>
-            <p className="text-xs text-dim sm:text-right">
-              {checking > 0
-                ? `Checking ${plural(checking, "photo")}…`
-                : untagged > 0
-                  ? `Say what ${untagged === 1 ? "1 piece is" : `${untagged} pieces are`} first`
-                  : todo.length > 0
-                    ? `${plural(new Set(todo.map((t) => t.piece.key)).size, "piece")} × ${plural(new Set(todo.map((t) => t.styleId)).size, "look")} · free previews`
-                    : looks.length === 0
-                      ? "Pick at least one look"
-                      : "Pick more looks or add pieces"}
-            </p>
-            <button onClick={shoot} disabled={todo.length === 0} className="btn-light shrink-0">
-              <Icon.aperture className="size-4" /> {todo.length ? `Make ${plural(todo.length, "photo")}` : "Make photos"}
-            </button>
+            <div className="flex items-center gap-3">
+              <p className="min-w-0 flex-1 text-xs text-dim sm:text-right">
+                {checking > 0
+                  ? `Checking ${plural(checking, "photo")}…`
+                  : untagged > 0
+                    ? `Say what ${untagged === 1 ? "1 piece is" : `${untagged} pieces are`} first`
+                    : todo.length > 0
+                      ? `${plural(new Set(todo.map((t) => t.piece.key)).size, "piece")} × ${plural(new Set(todo.map((t) => t.styleId)).size, "look")} · free previews`
+                      : looks.length === 0
+                        ? "Pick at least one look"
+                        : "Pick more looks or add pieces"}
+              </p>
+              <button onClick={shoot} disabled={todo.length === 0} className="btn-light shrink-0">
+                <Icon.aperture className="size-4" /> {todo.length ? `Make ${plural(todo.length, "photo")}` : "Make photos"}
+              </button>
+            </div>
           </div>
         </div>
       )}
