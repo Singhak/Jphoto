@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BRAND, whatsappLink } from "@/lib/brand";
 import { useStore } from "@/lib/store";
+import { useTheme } from "@/lib/theme";
 import { Icon } from "./icons";
 
 const NAV = [
@@ -15,6 +16,7 @@ const NAV = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { credits, ready } = useStore();
+  const { resolved, setTheme } = useTheme();
   const active = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   return (
@@ -41,7 +43,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="font-semibold tabular-nums">{ready ? credits : "–"}</span>
             <span className="text-dim">photos left</span>
           </Link>
-          <a href={whatsappLink()} target="_blank" rel="noreferrer" className="rounded-lg p-2 text-dim hover:text-text" aria-label="Help on WhatsApp">
+          <button
+            onClick={() => setTheme(resolved === "dark" ? "light" : "dark")}
+            className="rounded-lg p-2 text-dim hover:text-text"
+            aria-label={resolved === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            title={resolved === "dark" ? "Light mode" : "Dark mode"}
+          >
+            {resolved === "dark" ? <Icon.sun className="size-5" /> : <Icon.moon className="size-5" />}
+          </button>
+          <a href={whatsappLink()} target="_blank" rel="noreferrer" className="hidden rounded-lg p-2 text-dim hover:text-text sm:block" aria-label="Help on WhatsApp">
             <Icon.help className="size-5" />
           </a>
           <Link href="/settings" className={`rounded-lg p-2 hover:text-text ${active("/settings") ? "text-text" : "text-dim"}`} aria-label="Settings">

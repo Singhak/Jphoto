@@ -139,12 +139,12 @@ export default function StudioPage() {
           setDrag(false);
           addFiles(e.dataTransfer.files);
         }}
-        className={`flex min-h-[70dvh] flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 text-center transition-colors ${drag ? "border-light bg-light/5" : "border-line"}`}
+        className={`flex min-h-[70dvh] flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-8 text-center sm:px-6 transition-colors ${drag ? "border-light bg-light/5" : "border-line"}`}
       >
-        <div className="mb-6 flex -space-x-3">
+        <div className="mb-4 flex -space-x-3 sm:mb-6">
           {(["ring", "necklace", "earring"] as const).map((p, i) => (
-            <span key={p} className="flex size-14 items-center justify-center rounded-full border border-line bg-panel" style={{ transform: `rotate(${(i - 1) * 8}deg)` }}>
-              <PieceIcon piece={p} className="size-8 text-light" />
+            <span key={p} className="flex size-12 items-center justify-center rounded-full border border-line bg-panel sm:size-14" style={{ transform: `rotate(${(i - 1) * 8}deg)` }}>
+              <PieceIcon piece={p} className="size-7 text-light sm:size-8" />
             </span>
           ))}
         </div>
@@ -152,19 +152,21 @@ export default function StudioPage() {
         <p className="mt-3 max-w-md text-dim">
           One piece per photo, lying on a plain cloth or stand. Add the whole tray at once. We check every photo for free before anything is made.
         </p>
-        <button onClick={() => fileInput.current?.click()} className="btn-light mt-6 px-6 py-3">
+        <button onClick={() => fileInput.current?.click()} className="btn-light mt-5 px-6 py-3 sm:mt-6">
           <Icon.plus className="size-4" /> Add photos
         </button>
-        <ol className="mt-10 grid max-w-2xl gap-4 text-left text-sm sm:grid-cols-3">
+        <ol className="mt-8 grid w-full max-w-2xl gap-3 text-left text-sm sm:mt-10 sm:grid-cols-3 sm:gap-4">
           {[
             ["Add photos", "Straight from your phone camera. Not worn, nothing touching it."],
             ["Pick looks", "Marble, velvet, a bride wearing it. Same looks for the whole batch."],
             ["Keep the best", "Previews are free. Pay only for the photos you download."],
           ].map(([t, d], i) => (
-            <li key={t} className="panel p-4">
-              <span className="font-head text-xl font-bold text-light">{i + 1}</span>
-              <p className="mt-1 font-semibold">{t}</p>
-              <p className="text-dim">{d}</p>
+            <li key={t} className="flex gap-3 sm:panel sm:block sm:p-4">
+              <span className="font-head text-xl leading-tight font-bold text-light">{i + 1}</span>
+              <div>
+                <p className="font-semibold sm:mt-1">{t}</p>
+                <p className="text-dim">{d}</p>
+              </div>
             </li>
           ))}
         </ol>
@@ -219,7 +221,7 @@ export default function StudioPage() {
         {(["product", "model"] as const).map((kind) => (
           <div key={kind}>
             <p className="mb-2 text-sm font-semibold text-dim">{kind === "product" ? "On a surface" : "Worn by a model"}</p>
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6">
+            <div className="grid grid-cols-3 gap-2 sm:gap-2.5 xl:grid-cols-6">
               {STYLES.filter((s) => s.kind === kind).map((s) => (
                 <LookTile
                   key={s.id}
@@ -369,7 +371,7 @@ function LookTile({ style, on, onToggle, cutoutId, fallbackPiece, unsuited }: { 
       onClick={onToggle}
       className={`group flex flex-col overflow-hidden rounded-lg bg-panel text-left ring-2 transition ${on ? "ring-light" : "ring-transparent hover:ring-line"} ${unsuited && !on ? "opacity-40" : ""}`}
     >
-      <div className="relative flex aspect-[4/5] w-full items-center justify-center overflow-hidden" style={{ background: look?.swatch }}>
+      <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden sm:aspect-[4/5]" style={{ background: look?.swatch }}>
         {sample ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={sample} alt={`${style.label} sample`} className="absolute inset-0 size-full object-cover transition-transform group-hover:scale-105" />
@@ -383,16 +385,24 @@ function LookTile({ style, on, onToggle, cutoutId, fallbackPiece, unsuited }: { 
         ) : (
           <PieceIcon piece={fallbackPiece} className={`size-1/3 ${look?.dark ? "text-white/45" : "text-black/25"}`} />
         )}
-        {model && <span className="absolute bottom-2 left-2 rounded bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white">{sample ? "Sample" : "AI model · sample soon"}</span>}
+        {model && (
+          <span className="absolute bottom-1.5 left-1.5 rounded bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white sm:bottom-2 sm:left-2">
+            {sample ? "Sample" : (
+              <>
+                AI model<span className="hidden sm:inline"> · sample soon</span>
+              </>
+            )}
+          </span>
+        )}
         <span
           className={`absolute top-2 right-2 flex size-6 items-center justify-center rounded-md border-2 transition ${on ? "border-light bg-light text-light-ink" : "border-white/60 bg-black/20 text-transparent"}`}
         >
           <Icon.check className="size-3.5" />
         </span>
       </div>
-      <div className="px-2.5 py-2">
-        <p className="text-sm font-semibold">{style.label}</p>
-        <p className="line-clamp-2 text-[11px] leading-snug text-dim">
+      <div className="px-2 py-1.5 sm:px-2.5 sm:py-2">
+        <p className="truncate text-xs font-semibold sm:text-sm">{style.label}</p>
+        <p className={`line-clamp-2 text-[11px] leading-snug text-dim ${unsuited ? "" : "hidden sm:block"}`}>
           {unsuited ? `Not for ${unsuited.map((t) => pieceLabel(t).toLowerCase()).join(", ")}` : look?.blurb}
         </p>
       </div>

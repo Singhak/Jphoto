@@ -15,6 +15,21 @@
   color-scheme: dark;
 }
 
+/* Light: warm ivory paper. The gold is darker so text and buttons stay readable on white. */
+:root[data-theme="light"] {
+  --bg: #f6f3ee;
+  --panel: #ffffff;
+  --raised: #efeae2;
+  --line: #e0d9ce;
+  --text: #1d1a17;
+  --dim: #6c645b;
+  --light: #9a5e0b;
+  --light-ink: #ffffff;
+  --ok: #1d8450;
+  --bad: #c0392b;
+  color-scheme: light;
+}
+
 @theme inline {
   --color-bg: var(--bg);
   --color-panel: var(--panel);
