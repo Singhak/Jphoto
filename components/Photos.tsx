@@ -36,6 +36,8 @@ export function PhotoTile({ id, caption, picked, onPick, onOpen, downloaded }: {
 /** Sticky bar for downloading picked photos. Re-downloads are free, so the cost only counts new ones. */
 export function PickedBar({ ids, onClear }: { ids: string[]; onClear: () => void }) {
   const { costOf, chargeDownloads, credits } = useStore();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   if (ids.length === 0) return null;
   const cost = costOf(ids);
   const short = cost > credits;
@@ -54,18 +56,24 @@ export function PickedBar({ ids, onClear }: { ids: string[]; onClear: () => void
           <Link href="/wallet" className="btn-light ml-auto">Top up</Link>
         ) : (
           <button
-            onClick={() => {
-              if (chargeDownloads(ids)) {
+            onClick={async () => {
+              setBusy(true);
+              const failed = await chargeDownloads(ids);
+              setBusy(false);
+              setError(failed ?? "");
+              if (!failed) {
                 downloadFiles(ids);
                 onClear();
               }
             }}
+            disabled={busy}
             className="btn-light ml-auto"
           >
-            <Icon.download className="size-4" /> Download
+            <Icon.download className="size-4" /> {busy ? "Saving…" : "Download"}
           </button>
         )}
       </div>
+      {error && <p className="mx-auto mt-2 max-w-xl rounded-lg bg-raised p-2 text-center text-sm text-bad">{error}</p>}
     </div>
   );
 }
@@ -76,6 +84,7 @@ export function Viewer({ item, original, onClose }: { item: Creation; original?:
   const current = creations.find((c) => c.id === item.id) ?? item;
   const [flagging, setFlagging] = useState(false);
   const [note, setNote] = useState("");
+  const [sending, setSending] = useState(false);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 sm:items-center sm:p-4" onClick={onClose}>
@@ -107,11 +116,17 @@ export function Viewer({ item, original, onClose }: { item: Creation; original?:
           <div className="mt-3 space-y-2">
             <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} className="field" placeholder="What’s different from your piece?" />
             <button
-              disabled={note.trim().length < 5}
-              onClick={() => {
-                // TODO: send to the review queue on the server with the note.
-                flag(current.id);
-                setFlagging(false);
+              disabled={note.trim().length < 5 || sending}
+              onClick={async () => {
+                setSending(true);
+                try {
+                  await flag(current.id, note.trim());
+                  setFlagging(false);
+                } catch (err) {
+                  alert((err as Error).message);
+                } finally {
+                  setSending(false);
+                }
               }}
               className="btn-light w-full"
             >

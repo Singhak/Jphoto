@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { currentUserId, unauthorized } from "@/lib/auth";
 import { extractJewellery, PIECE_TYPES, type PieceType } from "@/lib/pipeline";
 import { saveCutout } from "@/lib/renders";
 
@@ -9,6 +10,8 @@ const MAX_BYTES = 15 * 1024 * 1024;
 
 /** Step 1: cut the piece out of the photo and run the photo checks. Free: no credit is used. */
 export async function POST(req: Request) {
+  const userId = await currentUserId();
+  if (!userId) return unauthorized();
   const form = await req.formData();
   const photo = form.get("photo");
   const piece = String(form.get("piece") ?? "");
@@ -19,7 +22,7 @@ export async function POST(req: Request) {
 
   try {
     const cutout = await extractJewellery(Buffer.from(await photo.arrayBuffer()), { piece: (piece || undefined) as PieceType | undefined });
-    const cutoutId = await saveCutout(cutout);
+    const cutoutId = await saveCutout(userId, cutout);
     // Outages on our side are logged, not shown: they aren't about the jeweller's photo.
     const internal = cutout.warnings.filter((w) => w.startsWith("Prop check skipped"));
     if (internal.length) console.warn("extract:", internal.join("; "));

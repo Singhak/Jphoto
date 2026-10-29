@@ -8,17 +8,24 @@ import { useStore } from "@/lib/store";
 const FREE = ["Previews and redos", "Photos that fail our checks", "Downloading a photo again"];
 
 export default function WalletPage() {
-  const { credits, ledger, addCredits, ready } = useStore();
+  const { credits, ledger, testTopUp, ready } = useStore();
   const [choice, setChoice] = useState(1);
   const [done, setDone] = useState<number | null>(null);
   const pack = TOP_UPS[choice];
   const total = pack.photos * pack.perPhoto;
   const saving = (TOP_UPS[0].perPhoto - pack.perPhoto) * pack.photos;
 
-  const pay = () => {
+  const [error, setError] = useState("");
+
+  const pay = async () => {
     // TODO: create a Cashfree order on the server, open Cashfree checkout, and add credits from the payment webhook.
-    addCredits(pack.photos, "top-up", `Top-up of ${pack.photos} photos (test mode)`);
-    setDone(pack.photos);
+    setError("");
+    try {
+      await testTopUp(pack.photos);
+      setDone(pack.photos);
+    } catch (err) {
+      setError((err as Error).message);
+    }
   };
 
   return (
@@ -41,7 +48,7 @@ export default function WalletPage() {
           <p className="mb-2 text-sm font-semibold">Activity</p>
           <div className="max-h-72 divide-y divide-line overflow-y-auto">
             {ledger.map((e, i) => (
-              <div key={i} className="flex items-center justify-between py-2 text-sm">
+              <div key={`${e.at}-${i}`} className="flex items-center justify-between py-2 text-sm">
                 <div>
                   <p>{e.note}</p>
                   <p className="text-xs text-dim">{new Date(e.at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</p>
@@ -93,6 +100,7 @@ export default function WalletPage() {
         </div>
         <button onClick={pay} className="btn-light mt-4 w-full py-3">Pay {inr(total)}</button>
         <p className="mt-2 text-center text-xs text-dim">UPI, cards and netbanking via Cashfree · GST invoice by email</p>
+        {error && <p className="mt-4 rounded-lg bg-bad/10 p-3 text-sm text-bad">{error}</p>}
         {done && (
           <p className="mt-4 rounded-lg bg-ok/10 p-3 text-sm text-ok">
             {done} photos added. Test mode: no payment was taken.

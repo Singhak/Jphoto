@@ -13,10 +13,11 @@ const THEMES: { id: Theme; label: string }[] = [
 ];
 
 export default function SettingsPage() {
-  const { shopName, phone, update, reset, ready } = useStore();
+  const { email, shopName, phone, update, signOut, ready } = useStore();
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
@@ -31,10 +32,15 @@ export default function SettingsPage() {
 
       <form
         className="panel space-y-4 p-5"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          update({ shopName: name.trim(), phone: mobile.trim() });
-          setSaved(true);
+          setError("");
+          try {
+            await update({ shopName: name.trim(), phone: mobile.trim() });
+            setSaved(true);
+          } catch (err) {
+            setError((err as Error).message);
+          }
         }}
         onChange={() => setSaved(false)}
       >
@@ -50,6 +56,7 @@ export default function SettingsPage() {
         <div className="flex items-center gap-3">
           <button className="btn-light">Save</button>
           {saved && <span className="flex items-center gap-1 text-sm text-ok"><Icon.check className="size-4" /> Saved</span>}
+          {error && <span className="text-sm text-bad">{error}</span>}
         </div>
       </form>
 
@@ -80,15 +87,11 @@ export default function SettingsPage() {
       </div>
 
       <div className="panel p-5">
-        <p className="text-sm font-semibold">Your photos</p>
+        <p className="text-sm font-semibold">Your account</p>
+        <p className="mt-1 text-sm text-dim">Signed in with Google{email ? ` as ${email}` : ""}. Your photos are kept in your account, so you can download them again from any phone.</p>
         <p className="mt-1 text-sm text-dim">Used only to make your catalogue photos. Never used to train AI, never shown to anyone else.</p>
-        <button
-          onClick={() => {
-            if (confirm("Clear everything saved on this device?")) reset();
-          }}
-          className="mt-1 py-2 text-sm text-bad hover:underline"
-        >
-          Clear data on this device
+        <button onClick={() => signOut()} className="mt-1 py-2 text-sm text-bad hover:underline">
+          Sign out
         </button>
       </div>
     </div>

@@ -1,34 +1,19 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { WELCOME_CREDITS } from "./catalog";
-import type { PieceType } from "./pipeline/presets";
+import type { Creation, LedgerEntry } from "./account";
+import { authClient } from "./auth-client";
 
 /**
- * Account state kept in the browser until Supabase is wired up.
- * Credits here are NOT secure: the download route must check and charge credits on the server before launch.
+ * The signed-in jeweller's account, loaded from the server (lib/account.ts).
+ * Nothing here is trusted: credits are checked and charged by the server.
  */
 
-export interface Creation {
-  /** Render id; the preview and full image are served from /api/renders/{id}. */
-  id: string;
-  piece: PieceType;
-  styleId: string;
-  collection: string;
-  createdAt: number;
-  downloaded: boolean;
-  flagged?: boolean;
-}
-
-export type LedgerKind = "welcome" | "top-up" | "download" | "refund";
-export interface LedgerEntry {
-  at: number;
-  kind: LedgerKind;
-  credits: number;
-  note: string;
-}
+export type { Creation, LedgerEntry };
 
 interface State {
+  name: string;
+  email: string;
   shopName: string;
   phone: string;
   credits: number;
@@ -36,81 +21,86 @@ interface State {
   ledger: LedgerEntry[];
 }
 
-const fresh = (): State => ({
-  shopName: "",
-  phone: "",
-  credits: WELCOME_CREDITS,
-  creations: [],
-  ledger: [{ at: Date.now(), kind: "welcome", credits: WELCOME_CREDITS, note: "Welcome photos" }],
-});
-const KEY = "jphoto-account-v2";
+const empty: State = { name: "", email: "", shopName: "", phone: "", credits: 0, creations: [], ledger: [] };
 
 interface Store extends State {
   ready: boolean;
-  update: (patch: Partial<Pick<State, "shopName" | "phone">>) => void;
-  addCredits: (credits: number, kind: LedgerKind, note: string) => void;
+  update: (patch: Partial<Pick<State, "shopName" | "phone">>) => Promise<void>;
+  /** Free credits while payments are in test mode. */
+  testTopUp: (photos: number) => Promise<void>;
+  /** Shows a photo the server just made and recorded. */
   addCreation: (item: Creation) => void;
   /** Credits needed to download these photos: already-downloaded ones are free again. */
   costOf: (ids: string[]) => number;
-  /** Charges for the photos not downloaded before. Returns false (and charges nothing) if credits are short. */
-  chargeDownloads: (ids: string[]) => boolean;
-  flag: (id: string) => void;
-  reset: () => void;
+  /** Has the server charge for the photos not downloaded before. Returns an error to show, or null. */
+  chargeDownloads: (ids: string[]) => Promise<string | null>;
+  flag: (id: string, note: string) => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 const Ctx = createContext<Store | null>(null);
 
+async function api(path: string, init?: RequestInit) {
+  const res = await fetch(path, { ...init, headers: { "Content-Type": "application/json", ...init?.headers } });
+  if (res.status === 401) {
+    window.location.href = "/login";
+    throw new Error("Signed out");
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error ?? "Something went wrong. Try again.");
+  return data;
+}
+
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<State>(fresh);
+  const [state, setState] = useState<State>(empty);
   const [ready, setReady] = useState(false);
 
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(KEY);
-      if (saved) setState({ ...fresh(), ...JSON.parse(saved) });
-    } catch {}
+  const refresh = useCallback(async () => {
+    const data = await api("/api/account");
+    setState({ ...empty, ...data });
     setReady(true);
   }, []);
 
   useEffect(() => {
-    if (!ready) return;
-    try {
-      localStorage.setItem(KEY, JSON.stringify(state));
-    } catch {}
-  }, [state, ready]);
+    refresh().catch(() => {});
+  }, [refresh]);
 
   const costOf = useCallback((ids: string[]) => state.creations.filter((c) => ids.includes(c.id) && !c.downloaded).length, [state.creations]);
-
-  const chargeDownloads = useCallback(
-    (ids: string[]) => {
-      const cost = costOf(ids);
-      if (cost > state.credits) return false;
-      if (cost === 0) return true;
-      setState((s) => ({
-        ...s,
-        credits: s.credits - cost,
-        creations: s.creations.map((c) => (ids.includes(c.id) ? { ...c, downloaded: true } : c)),
-        ledger: [{ at: Date.now(), kind: "download", credits: -cost, note: `${cost} photo${cost > 1 ? "s" : ""} downloaded` }, ...s.ledger],
-      }));
-      return true;
-    },
-    [costOf, state.credits],
-  );
 
   const store = useMemo<Store>(
     () => ({
       ...state,
       ready,
-      update: (patch) => setState((s) => ({ ...s, ...patch })),
-      addCredits: (credits, kind, note) =>
-        setState((s) => ({ ...s, credits: s.credits + credits, ledger: [{ at: Date.now(), kind, credits, note }, ...s.ledger] })),
-      addCreation: (item) => setState((s) => ({ ...s, creations: [item, ...s.creations] })),
+      update: async (patch) => {
+        await api("/api/account", { method: "PATCH", body: JSON.stringify(patch) });
+        setState((s) => ({ ...s, ...patch }));
+      },
+      testTopUp: async (photos) => {
+        await api("/api/wallet/test-top-up", { method: "POST", body: JSON.stringify({ photos }) });
+        await refresh();
+      },
+      addCreation: (item) => setState((s) => ({ ...s, creations: [item, ...s.creations.filter((c) => c.id !== item.id)] })),
       costOf,
-      chargeDownloads,
-      flag: (id) => setState((s) => ({ ...s, creations: s.creations.map((c) => (c.id === id ? { ...c, flagged: true } : c)) })),
-      reset: () => setState(fresh()),
+      chargeDownloads: async (ids) => {
+        try {
+          await api("/api/downloads", { method: "POST", body: JSON.stringify({ ids }) });
+          return null;
+        } catch (err) {
+          return (err as Error).message;
+        } finally {
+          await refresh().catch(() => {});
+        }
+      },
+      flag: async (id, note) => {
+        await api(`/api/creations/${id}/flag`, { method: "POST", body: JSON.stringify({ note }) });
+        setState((s) => ({ ...s, creations: s.creations.map((c) => (c.id === id ? { ...c, flagged: true } : c)) }));
+      },
+      signOut: async () => {
+        await authClient.signOut();
+        window.location.href = "/login";
+      },
     }),
-    [state, ready, costOf, chargeDownloads],
+    [state, ready, costOf, refresh],
   );
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
@@ -122,7 +112,7 @@ export function useStore() {
   return store;
 }
 
-/** Starts a browser download for each photo. TODO: one zip from the server for big selections. */
+/** Starts a browser download for each photo. Call after chargeDownloads succeeds. TODO: one zip from the server for big selections. */
 export function downloadFiles(ids: string[]) {
   ids.forEach((id, i) =>
     setTimeout(() => {

@@ -94,13 +94,17 @@ export default function StudioPage() {
         const res = await fetch("/api/render", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cutoutId: piece.cutoutId, piece: piece.type, styleId: shot.styleId }),
+          body: JSON.stringify({ cutoutId: piece.cutoutId, piece: piece.type, styleId: shot.styleId, collection: collection.trim() || thisMonth() }),
         });
         const data = await res.json();
+        if (res.status === 401) {
+          window.location.href = "/login";
+          return;
+        }
         if (!res.ok) return patchShot(shot.key, { status: "error", note: data.error });
         if (!data.accepted) return patchShot(shot.key, { status: "rejected", note: "Failed our checks, so it’s hidden. Not charged." });
         patchShot(shot.key, { status: "done", id: data.id });
-        addCreation({ id: data.id, piece: piece.type as PieceType, styleId: shot.styleId, collection: collection.trim() || thisMonth(), createdAt: Date.now(), downloaded: false });
+        addCreation(data.creation);
       } catch {
         patchShot(shot.key, { status: "error", note: "Connection lost. Not charged." });
       }

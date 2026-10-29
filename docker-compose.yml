@@ -1,0 +1,19 @@
+# Self-hosted Postgres for development, or for running the app without a hosted database.
+#   docker compose up -d
+#   DATABASE_URL=postgres://jphoto:jphoto@localhost:5432/jphoto
+#   npm run db:migrate
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: jphoto
+      POSTGRES_PASSWORD: jphoto
+      POSTGRES_DB: jphoto
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
