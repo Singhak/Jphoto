@@ -35,7 +35,7 @@ const thisMonth = () => new Date().toLocaleDateString("en-IN", { month: "long", 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 export default function StudioPage() {
-  const { addCreation, creations } = useStore();
+  const { addCreation, creations, credits, ready: accountReady } = useStore();
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [focus, setFocus] = useState<string | null>(null);
   const [looks, setLooks] = useState<string[]>(["studio-white"]);
@@ -154,14 +154,14 @@ export default function StudioPage() {
         </div>
         <h1 className="font-head text-3xl font-bold tracking-tight md:text-5xl">Drop your pieces in.</h1>
         <p className="mt-3 max-w-md text-dim">
-          One piece per photo, lying on a plain cloth or stand. Add the whole tray at once. We check every photo for free before anything is made.
+          One piece per photo. Lying on a cloth, on a stand or held in your fingers is all fine: we cut the piece out. Add the whole tray at once. We check every photo for free before anything is made.
         </p>
         <button onClick={() => fileInput.current?.click()} className="btn-light mt-5 px-6 py-3 sm:mt-6">
           <Icon.plus className="size-4" /> Add photos
         </button>
         <ol className="mt-8 grid w-full max-w-2xl gap-3 text-left text-sm sm:mt-10 sm:grid-cols-3 sm:gap-4">
           {[
-            ["Add photos", "Straight from your phone camera. Not worn, nothing touching it."],
+            ["Add photos", "Straight from your phone camera. Held or on a stand is fine, but not worn on a hand or neck."],
             ["Pick looks", "Marble, velvet, a bride wearing it. Same looks for the whole batch."],
             ["Keep the best", "Previews are free. Pay only for the photos you download."],
           ].map(([t, d], i) => (
@@ -287,17 +287,25 @@ export default function StudioPage() {
               <input value={collection} onChange={(e) => setCollection(e.target.value)} className="field border-transparent bg-transparent px-1 py-1" aria-label="Collection name" />
             </label>
             <div className="flex items-center gap-3">
-              <p className="min-w-0 flex-1 text-xs text-dim sm:text-right">
-                {checking > 0
-                  ? `Checking ${plural(checking, "photo")}…`
-                  : untagged > 0
-                    ? `Say what ${untagged === 1 ? "1 piece is" : `${untagged} pieces are`} first`
-                    : todo.length > 0
-                      ? `${plural(new Set(todo.map((t) => t.piece.key)).size, "piece")} × ${plural(new Set(todo.map((t) => t.styleId)).size, "look")} · free previews`
-                      : looks.length === 0
-                        ? "Pick at least one look"
-                        : "Pick more looks or add pieces"}
-              </p>
+              <div className="min-w-0 flex-1 text-xs text-dim sm:text-right">
+                <p>
+                  {checking > 0
+                    ? `Checking ${plural(checking, "photo")}…`
+                    : untagged > 0
+                      ? `Say what ${untagged === 1 ? "1 piece is" : `${untagged} pieces are`} first`
+                      : todo.length > 0
+                        ? `${plural(new Set(todo.map((t) => t.piece.key)).size, "piece")} × ${plural(new Set(todo.map((t) => t.styleId)).size, "look")} · free previews`
+                        : looks.length === 0
+                          ? "Pick at least one look"
+                          : "Pick more looks or add pieces"}
+                </p>
+                {/* The charge-on-download rule, shown where the jeweller decides. */}
+                {accountReady && (
+                  <p className="mt-0.5 text-[11px]">
+                    You pay only for downloads, 1 photo each · <span className={credits > 0 ? "text-text" : "text-light"}>{credits > 0 ? `${plural(credits, "photo")} left` : "top up before downloading"}</span>
+                  </p>
+                )}
+              </div>
               <button onClick={shoot} disabled={todo.length === 0} className="btn-light shrink-0">
                 <Icon.aperture className="size-4" /> {todo.length ? `Make ${plural(todo.length, "photo")}` : "Make photos"}
               </button>
