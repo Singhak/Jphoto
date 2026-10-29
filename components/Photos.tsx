@@ -7,6 +7,7 @@ import { STYLES } from "@/lib/pipeline/presets";
 import { type Creation, downloadFiles, useStore } from "@/lib/store";
 import { CompareSlider } from "./CompareSlider";
 import { Icon } from "./icons";
+import { ShareDialog } from "./ShareDialog";
 
 export const styleLabel = (id: string) => STYLES.find((s) => s.id === id)?.label ?? id;
 
@@ -85,6 +86,7 @@ export function Viewer({ item, original, onClose }: { item: Creation; original?:
   const [flagging, setFlagging] = useState(false);
   const [note, setNote] = useState("");
   const [sending, setSending] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 sm:items-center sm:p-4" onClick={onClose}>
@@ -105,6 +107,13 @@ export function Viewer({ item, original, onClose }: { item: Creation; original?:
         <p className="mt-3 flex items-center gap-2 text-xs text-ok">
           <Icon.shield className="size-4" /> Checked: the piece matches your photo pixel for pixel.
         </p>
+        {current.downloaded ? (
+          <button onClick={() => setSharing(true)} className="btn-quiet mt-3 w-full">
+            <Icon.whatsapp className="size-4" /> Share with your shop frame
+          </button>
+        ) : (
+          <p className="mt-3 text-xs text-dim">Once downloaded, you can share it in a frame with your shop name: Instagram post, Status, postcard and more.</p>
+        )}
         {current.flagged ? (
           <p className="mt-3 rounded-lg bg-raised p-3 text-sm text-dim">Flagged. We’ll compare it with your photo and put the credit back if it’s off, usually within a day.</p>
         ) : current.downloaded && !flagging ? (
@@ -135,6 +144,7 @@ export function Viewer({ item, original, onClose }: { item: Creation; original?:
           </div>
         )}
       </div>
+      {sharing && <ShareDialog item={current} onClose={() => setSharing(false)} />}
     </div>
   );
 }

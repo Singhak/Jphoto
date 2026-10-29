@@ -8,6 +8,7 @@ import { UnlockProgress } from "@/components/BrochureOffer";
 import { Icon } from "@/components/icons";
 import { BROCHURE_UNLOCK, type Brochure, type BrochureItem, PURITIES, TEMPLATES, type TemplateId } from "@/lib/brochure";
 import { pieceLabel } from "@/lib/catalog";
+import { shareOrDownload } from "@/lib/share-frames";
 import { type Creation, useStore } from "@/lib/store";
 
 /** Every downloaded photo of the collection; only the included ones are saved and printed. */
@@ -103,21 +104,7 @@ function Editor() {
     setError("");
     try {
       const files = await Promise.all(brochure.items.map((item) => makeCard(item, brochure, store)));
-      if (navigator.canShare?.({ files })) {
-        await navigator.share({ files, title: brochure.title }).catch((err) => {
-          if ((err as Error).name !== "AbortError") throw err;
-        });
-      } else {
-        files.forEach((file, i) =>
-          setTimeout(() => {
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(file);
-            a.download = file.name;
-            a.click();
-            setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
-          }, i * 400),
-        );
-      }
+      await shareOrDownload(files, brochure.title);
     } catch (err) {
       setError((err as Error).message || "Couldn’t make the pictures. Try again.");
     } finally {

@@ -1,18 +1,15 @@
 "use client";
 
-import { Marcellus } from "next/font/google";
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { type Brochure, type BrochureItem, PER_GRID_PAGE, specLine, TEMPLATES } from "@/lib/brochure";
 import { mobileDigits } from "@/lib/catalog";
+import { display, loadPhoto, renderFrame, toFile } from "@/lib/share-frames";
 
 /**
  * The printed brochure: A4 pages laid out in millimetres, so "Save as PDF" from the browser gives the same pages.
  * Photos are the full-size downloads, shown at their own 4:5 shape so no part of a piece is ever cropped off.
  */
-
-const marcellus = Marcellus({ weight: "400", subsets: ["latin"] });
-const display = marcellus.style.fontFamily;
 
 export interface Shop {
   shopName: string;
@@ -207,64 +204,9 @@ function Photo({ id, bg, className }: { id: string; bg: string; className: strin
   return <img src={photoSrc(id)} alt="" style={{ background: bg }} className={`aspect-[4/5] object-cover ${className}`} />;
 }
 
-/**
- * One 1080×1600 picture per piece for WhatsApp chats and Status: the full 4:5 photo with the details under it.
- * Drawn on a canvas in the browser, so it costs nothing on the server.
- */
+/** One tall picture per piece for WhatsApp, in the brochure's colours: the full photo with the details under it. */
 export async function makeCard(item: BrochureItem, brochure: Brochure, shop: Shop): Promise<File> {
-  const t = TEMPLATES[brochure.template].cover;
-  const W = 1080, PHOTO = 1350, H = 1600, PAD = 56;
-  const sans = getComputedStyle(document.body).fontFamily;
-  await Promise.all([document.fonts.load(`56px ${display}`), document.fonts.load(`600 30px ${sans}`)]);
-
-  const img = new Image();
-  img.src = photoSrc(item.creationId);
-  await img.decode();
-
-  const canvas = document.createElement("canvas");
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext("2d")!;
-  ctx.fillStyle = t.bg;
-  ctx.fillRect(0, 0, W, H);
-  ctx.drawImage(img, 0, 0, W, PHOTO);
-
-  const fit = (text: string, max: number) => {
-    let s = text;
-    while (s.length > 1 && ctx.measureText(s).width > max) s = s.slice(0, -1);
-    return s === text ? s : `${s.trimEnd()}…`;
-  };
-  ctx.textBaseline = "alphabetic";
-
-  ctx.font = `600 30px ${sans}`;
-  const codeWidth = item.code ? ctx.measureText(item.code).width + 24 : 0;
-  ctx.fillStyle = t.muted;
-  ctx.textAlign = "right";
-  if (item.code) ctx.fillText(item.code, W - PAD, PHOTO + 82);
-
-  ctx.textAlign = "left";
-  ctx.font = `52px ${display}`;
-  ctx.fillStyle = t.accent;
-  ctx.fillText(fit(item.name, W - PAD * 2 - codeWidth), PAD, PHOTO + 84);
-
-  ctx.font = `30px ${sans}`;
-  ctx.fillStyle = t.ink;
-  const spec = specLine(item);
-  if (spec) ctx.fillText(fit(spec, W - PAD * 2), PAD, PHOTO + 134);
-
-  ctx.fillStyle = t.line;
-  ctx.fillRect(PAD, H - 82, W - PAD * 2, 2);
-  ctx.font = `34px ${display}`;
-  ctx.fillStyle = t.ink;
-  ctx.fillText(fit(shopTitle(shop), 560), PAD, H - 30);
-  if (shop.phone) {
-    ctx.font = `26px ${sans}`;
-    ctx.fillStyle = t.muted;
-    ctx.textAlign = "right";
-    ctx.fillText(fit(`${waLink(shop.phone) ? "WhatsApp" : "Call"} ${shop.phone}`, 400), W - PAD, H - 32);
-  }
-
-  const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Couldn't make the picture."))), "image/jpeg", 0.92));
-  const slug = (item.code || item.name || "piece").replace(/[^\w-]+/g, "-").toLowerCase();
-  return new File([blob], `${slug}.jpg`, { type: "image/jpeg" });
+  const text = { title: item.name, detail: specLine(item), code: item.code, shopName: shop.shopName, phone: shop.phone };
+  const canvas = await renderFrame("card", await loadPhoto(item.creationId), text, TEMPLATES[brochure.template].cover);
+  return toFile(canvas, item.code || item.name);
 }
