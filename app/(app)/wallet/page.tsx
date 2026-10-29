@@ -1,30 +1,66 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icons";
-import { inr, TOP_UPS } from "@/lib/catalog";
+import { inr, mobileDigits, TOP_UPS } from "@/lib/catalog";
 import { useStore } from "@/lib/store";
 
 const FREE = ["Previews and redos", "Photos that fail our checks", "Downloading a photo again"];
 
+type Notice = { tone: "ok" | "bad" | "dim"; text: string } | null;
+
 export default function WalletPage() {
-  const { credits, ledger, testTopUp, ready } = useStore();
+  const { credits, ledger, testTopUp, buy, verifyPayment, update, phone, paymentsLive, ready } = useStore();
   const [choice, setChoice] = useState(1);
-  const [done, setDone] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<Notice>(null);
+  const [mobile, setMobile] = useState("");
   const pack = TOP_UPS[choice];
   const total = pack.photos * pack.perPhoto;
   const saving = (TOP_UPS[0].perPhoto - pack.perPhoto) * pack.photos;
+  const needsMobile = paymentsLive && !mobileDigits(phone);
 
-  const [error, setError] = useState("");
+  // Back from Cashfree checkout: /wallet?order=… Confirm it once, then tidy the address bar.
+  const checked = useRef(false);
+  useEffect(() => {
+    const orderId = new URLSearchParams(window.location.search).get("order");
+    if (!ready || !orderId || checked.current) return;
+    checked.current = true;
+    window.history.replaceState(null, "", "/wallet");
+    setNotice({ tone: "dim", text: "Checking your payment…" });
+    verifyPayment(orderId)
+      .then((state) =>
+        setNotice(
+          state === "paid"
+            ? { tone: "ok", text: "Payment received. Your photos have been added." }
+            : state === "failed"
+              ? { tone: "bad", text: "The payment didn't go through, and no photos were added. If money left your account, it returns automatically within 5–7 working days." }
+              : { tone: "dim", text: "Your bank is still confirming the payment. Photos are added as soon as it does; refresh this page in a few minutes." },
+        ),
+      )
+      .catch((err) => setNotice({ tone: "bad", text: (err as Error).message }));
+  }, [ready, verifyPayment]);
 
   const pay = async () => {
-    // TODO: create a Cashfree order on the server, open Cashfree checkout, and add credits from the payment webhook.
-    setError("");
+    setNotice(null);
+    setBusy(true);
     try {
-      await testTopUp(pack.photos);
-      setDone(pack.photos);
+      if (!paymentsLive) {
+        await testTopUp(pack.photos);
+        setNotice({ tone: "ok", text: `${pack.photos} photos added. Test mode: no payment was taken.` });
+        return;
+      }
+      if (needsMobile) {
+        const digits = mobileDigits(mobile);
+        if (!digits) throw new Error("Enter a 10-digit mobile number.");
+        await update({ phone: digits });
+      }
+      await buy(pack.photos);
+      // On success the page has already left for Cashfree.
     } catch (err) {
-      setError((err as Error).message);
+      setNotice({ tone: "bad", text: (err as Error).message });
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -62,15 +98,15 @@ export default function WalletPage() {
 
       <div className="panel h-fit p-6">
         <h1 className="font-head text-2xl font-bold">Top up</h1>
-        <p className="mt-1 text-sm text-dim">Buy photos in any amount. The more you take, the less each one costs. They never expire.</p>
+        <p className="mt-1 text-sm text-dim">The more photos you take, the less each one costs. They never expire.</p>
 
-        <div className="mt-6 grid grid-cols-5 gap-1.5">
+        <div className="mt-6 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${TOP_UPS.length}, minmax(0, 1fr))` }}>
           {TOP_UPS.map((t, i) => (
             <button
               key={t.photos}
               onClick={() => {
                 setChoice(i);
-                setDone(null);
+                setNotice(null);
               }}
               className={`rounded-lg border py-3 text-center transition ${i === choice ? "border-light bg-light/10" : "border-line hover:border-dim"}`}
             >
@@ -98,13 +134,23 @@ export default function WalletPage() {
           </div>
           <p className="font-head text-3xl font-bold tabular-nums">{inr(total)}</p>
         </div>
-        <button onClick={pay} className="btn-light mt-4 w-full py-3">Pay {inr(total)}</button>
-        <p className="mt-2 text-center text-xs text-dim">UPI, cards and netbanking via Cashfree · GST invoice by email</p>
-        {error && <p className="mt-4 rounded-lg bg-bad/10 p-3 text-sm text-bad">{error}</p>}
-        {done && (
-          <p className="mt-4 rounded-lg bg-ok/10 p-3 text-sm text-ok">
-            {done} photos added. Test mode: no payment was taken.
-          </p>
+
+        {needsMobile && (
+          <label className="mt-4 block">
+            <span className="mb-1 block text-sm">Mobile number</span>
+            <input className="field" inputMode="tel" value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="98765 43210" />
+            <span className="mt-1 block text-xs text-dim">Cashfree sends the payment receipt to it. We never share it.</span>
+          </label>
+        )}
+
+        <button onClick={pay} disabled={busy || !ready} className="btn-light mt-4 w-full py-3">
+          {busy ? "Opening payment…" : `Pay ${inr(total)}`}
+        </button>
+        <p className="mt-2 text-center text-xs text-dim">
+          {paymentsLive ? "UPI, cards and netbanking via Cashfree · Price includes all taxes" : "Test mode: photos are added free, no payment is taken"}
+        </p>
+        {notice && (
+          <p className={`mt-4 rounded-lg p-3 text-sm ${notice.tone === "ok" ? "bg-ok/10 text-ok" : notice.tone === "bad" ? "bg-bad/10 text-bad" : "bg-raised text-dim"}`}>{notice.text}</p>
         )}
       </div>
     </div>

@@ -19,15 +19,21 @@ interface State {
   credits: number;
   creations: Creation[];
   ledger: LedgerEntry[];
+  /** True when Cashfree is set up; otherwise top-ups are free test credits. */
+  paymentsLive: boolean;
 }
 
-const empty: State = { name: "", email: "", shopName: "", phone: "", credits: 0, creations: [], ledger: [] };
+const empty: State = { name: "", email: "", shopName: "", phone: "", credits: 0, creations: [], ledger: [], paymentsLive: false };
 
 interface Store extends State {
   ready: boolean;
   update: (patch: Partial<Pick<State, "shopName" | "phone">>) => Promise<void>;
   /** Free credits while payments are in test mode. */
   testTopUp: (photos: number) => Promise<void>;
+  /** Opens Cashfree checkout for a pack. The page leaves for Cashfree and comes back to /wallet?order=…. */
+  buy: (photos: number) => Promise<void>;
+  /** After Cashfree sends the jeweller back: confirms the order and refreshes the balance. */
+  verifyPayment: (orderId: string) => Promise<"paid" | "pending" | "failed" | "unknown">;
   /** Shows a photo the server just made and recorded. */
   addCreation: (item: Creation) => void;
   /** Credits needed to download these photos: already-downloaded ones are free again. */
@@ -79,6 +85,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         await api("/api/wallet/test-top-up", { method: "POST", body: JSON.stringify({ photos }) });
         await refresh();
       },
+      buy: async (photos) => {
+        const { paymentSessionId, mode } = await api("/api/payments/order", { method: "POST", body: JSON.stringify({ photos }) });
+        const Cashfree = await loadCashfree();
+        await Cashfree({ mode }).checkout({ paymentSessionId, redirectTarget: "_self" });
+      },
+      verifyPayment: async (orderId) => {
+        const { state } = await api("/api/payments/verify", { method: "POST", body: JSON.stringify({ orderId }) });
+        await refresh();
+        return state;
+      },
       addCreation: (item) => setState((s) => ({ ...s, creations: [item, ...s.creations.filter((c) => c.id !== item.id)] })),
       costOf,
       chargeDownloads: async (ids) => {
@@ -110,6 +126,21 @@ export function useStore() {
   const store = useContext(Ctx);
   if (!store) throw new Error("useStore must be used inside StoreProvider");
   return store;
+}
+
+type CashfreeFactory = (opts: { mode: "sandbox" | "production" }) => { checkout: (opts: { paymentSessionId: string; redirectTarget: "_self" }) => Promise<unknown> };
+
+/** Cashfree's checkout script, loaded only when a jeweller pays. */
+function loadCashfree(): Promise<CashfreeFactory> {
+  const w = window as unknown as { Cashfree?: CashfreeFactory };
+  if (w.Cashfree) return Promise.resolve(w.Cashfree);
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
+    script.onload = () => (w.Cashfree ? resolve(w.Cashfree) : reject(new Error("Couldn't load the payment page. Try again.")));
+    script.onerror = () => reject(new Error("Couldn't load the payment page. Check your internet and try again."));
+    document.head.appendChild(script);
+  });
 }
 
 /** Starts a browser download for each photo. Call after chargeDownloads succeeds. TODO: one zip from the server for big selections. */

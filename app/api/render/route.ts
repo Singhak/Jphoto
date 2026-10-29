@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { addCreation } from "@/lib/account";
 import { currentUserId, unauthorized } from "@/lib/auth";
+import { MODEL_LOOKS_ON } from "@/lib/catalog";
+import { takeFree } from "@/lib/limits";
 import { PIECE_TYPES, renderShot, STYLES } from "@/lib/pipeline";
 import { isId, loadCutout, saveShot } from "@/lib/renders";
 
@@ -11,7 +13,7 @@ export const maxDuration = 300;
 const Body = z.object({
   cutoutId: z.string().refine(isId),
   piece: z.enum(PIECE_TYPES),
-  styleId: z.string().refine((id) => STYLES.some((s) => s.id === id)),
+  styleId: z.string().refine((id) => STYLES.some((s) => s.id === id && (MODEL_LOOKS_ON || s.kind !== "model"))),
   collection: z.string().trim().min(1).max(120),
 });
 
@@ -22,6 +24,8 @@ export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Bad request" }, { status: 400 });
   const { cutoutId, piece, styleId, collection } = parsed.data;
+  const limited = await takeFree(userId, "preview", `${cutoutId}:${styleId}`);
+  if (limited) return NextResponse.json({ error: limited, limited: true }, { status: 429 });
 
   try {
     const cutout = await loadCutout(userId, cutoutId);

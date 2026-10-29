@@ -3,30 +3,9 @@
 import { useEffect, useState } from "react";
 import { BRAND } from "@/lib/brand";
 import { pieceLabel } from "@/lib/catalog";
-import { type PieceType, STYLES } from "@/lib/pipeline/presets";
-import ORIGINALS from "@/lib/sample-originals.json";
-import SAMPLES from "@/lib/samples.json";
+import { SHOWN } from "@/lib/showcase";
 import { CompareSlider } from "./CompareSlider";
 import { Icon } from "./icons";
-
-const samples = SAMPLES as Record<string, Partial<Record<PieceType, string>>>;
-const originals = ORIGINALS as Partial<Record<PieceType, string>>;
-
-/** Model looks first: they are the biggest change from a phone photo. */
-const ORDER = [...STYLES.filter((s) => s.kind === "model"), ...STYLES.filter((s) => s.kind === "product")];
-
-/** The sample piece with the most finished looks, from scripts/make-samples.ts. */
-function pickPiece() {
-  let best: { piece: PieceType; before: string; looks: { id: string; label: string; src: string }[] } | null = null;
-  for (const [piece, before] of Object.entries(originals) as [PieceType, string][]) {
-    const looks = ORDER.filter((s) => samples[s.id]?.[piece]).map((s) => ({ id: s.id, label: s.label, src: samples[s.id][piece]! }));
-    if (looks.length && (!best || looks.length > best.looks.length)) best = { piece, before, looks };
-  }
-  return best;
-}
-
-const SHOWN = pickPiece();
-export const hasShowcase = SHOWN !== null;
 
 /**
  * One real phone photo against every look made from it. Renders nothing until samples exist (npm run samples).

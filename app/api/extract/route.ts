@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentUserId, unauthorized } from "@/lib/auth";
+import { takeFree } from "@/lib/limits";
 import { extractJewellery, PIECE_TYPES, type PieceType } from "@/lib/pipeline";
 import { saveCutout } from "@/lib/renders";
 
@@ -19,6 +20,8 @@ export async function POST(req: Request) {
   if (photo.size > MAX_BYTES) return NextResponse.json({ error: "Photo is larger than 15 MB." }, { status: 400 });
   // Optional: the check starts as soon as a photo is dropped, often before the jeweller has said what it is.
   if (piece && !(PIECE_TYPES as readonly string[]).includes(piece)) return NextResponse.json({ error: "Unknown piece type." }, { status: 400 });
+  const limited = await takeFree(userId, "check");
+  if (limited) return NextResponse.json({ error: limited }, { status: 429 });
 
   try {
     const cutout = await extractJewellery(Buffer.from(await photo.arrayBuffer()), { piece: (piece || undefined) as PieceType | undefined });

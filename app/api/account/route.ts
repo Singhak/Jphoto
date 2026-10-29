@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAccount, updateProfile } from "@/lib/account";
 import { currentUserId, unauthorized } from "@/lib/auth";
+import { paymentsLive } from "@/lib/payments";
 
 export const runtime = "nodejs";
 
@@ -9,7 +10,7 @@ export const runtime = "nodejs";
 export async function GET() {
   const userId = await currentUserId();
   if (!userId) return unauthorized();
-  return NextResponse.json(await getAccount(userId));
+  return NextResponse.json({ ...(await getAccount(userId)), paymentsLive: paymentsLive() });
 }
 
 const Patch = z.object({ shopName: z.string().trim().max(120).optional(), phone: z.string().trim().max(30).optional() });

@@ -120,3 +120,40 @@ export const creations = pgTable(
   },
   (t) => [index("creations_user_idx").on(t.userId, t.createdAt)],
 );
+
+/** One Cashfree order. Credits are added once, when the order is confirmed as paid (lib/payments.ts). */
+export const payments = pgTable(
+  "payments",
+  {
+    orderId: text("order_id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    photos: integer("photos").notNull(),
+    /** Whole rupees, taxes included. */
+    amount: integer("amount").notNull(),
+    status: text("status", { enum: ["created", "paid", "failed"] }).notNull().default("created"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+  },
+  (t) => [index("payments_user_idx").on(t.userId, t.createdAt)],
+);
+
+/**
+ * Free work done for a jeweller: photo checks and previews. Each one costs us an AI call even if nothing
+ * is downloaded, so lib/limits.ts caps them per day and per look.
+ */
+export const usageEvents = pgTable(
+  "usage_events",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+    kind: text("kind", { enum: ["check", "preview"] }).notNull(),
+    /** Previews only: "{cutoutId}:{styleId}", to count redos of one look. */
+    ref: text("ref"),
+  },
+  (t) => [index("usage_events_user_idx").on(t.userId, t.kind, t.at), index("usage_events_ref_idx").on(t.userId, t.ref)],
+);

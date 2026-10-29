@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { Icon } from "@/components/icons";
-import { hasShowcase, Showcase } from "@/components/Showcase";
+import { Showcase } from "@/components/Showcase";
 import { authClient } from "@/lib/auth-client";
 import { BRAND } from "@/lib/brand";
+import { hasShowcase } from "@/lib/showcase";
 
 export default function LoginPage() {
   const [busy, setBusy] = useState(false);

@@ -11,7 +11,8 @@ services:
       POSTGRES_PASSWORD: jphoto
       POSTGRES_DB: jphoto
     ports:
-      - "5432:5432"
+      # Set PG_PORT when 5432 is taken by another project, and use the same port in DATABASE_URL.
+      - "${PG_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 

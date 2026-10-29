@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { Icon, PieceIcon } from "@/components/icons";
 import { PhotoTile, PickedBar, styleLabel, Viewer } from "@/components/Photos";
-import { PIECES, pieceLabel, STYLE_LOOKS } from "@/lib/catalog";
+import { MODEL_LOOKS_ON, PIECES, pieceLabel, STYLE_LOOKS } from "@/lib/catalog";
 import SAMPLES from "@/lib/samples.json";
 import { type PieceType, type StylePreset, STYLES, stylesFor } from "@/lib/pipeline/presets";
 import { type Creation, useStore } from "@/lib/store";
@@ -29,6 +29,8 @@ interface Shot {
   status: "queued" | "making" | "done" | "rejected" | "error";
   id?: string;
   note?: string;
+  /** A daily or per-look limit was hit, so trying again now would fail too. */
+  limited?: boolean;
 }
 
 const thisMonth = () => new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" });
@@ -79,6 +81,7 @@ export default function StudioPage() {
       const res = await fetch("/api/extract", { method: "POST", body: form });
       const data = await res.json();
       if (res.status >= 500) return patchPiece(piece.key, { check: "failed", notes: ["Our side hiccupped. Your photo is fine."] });
+      if (res.status === 429) return patchPiece(piece.key, { check: "failed", notes: [data.error] });
       if (!res.ok) return patchPiece(piece.key, { check: "bad", notes: [data.error] });
       if (data.problems.length) return patchPiece(piece.key, { check: "bad", cutoutId: data.cutoutId, notes: data.problems });
       patchPiece(piece.key, { check: "ok", cutoutId: data.cutoutId, notes: data.warnings });
@@ -101,7 +104,7 @@ export default function StudioPage() {
           window.location.href = "/login";
           return;
         }
-        if (!res.ok) return patchShot(shot.key, { status: "error", note: data.error });
+        if (!res.ok) return patchShot(shot.key, { status: "error", note: data.error, limited: Boolean(data.limited) });
         if (!data.accepted) return patchShot(shot.key, { status: "rejected", note: "Failed our checks, so it’s hidden. Not charged." });
         patchShot(shot.key, { status: "done", id: data.id });
         addCreation(data.creation);
@@ -162,7 +165,7 @@ export default function StudioPage() {
         <ol className="mt-8 grid w-full max-w-2xl gap-3 text-left text-sm sm:mt-10 sm:grid-cols-3 sm:gap-4">
           {[
             ["Add photos", "Straight from your phone camera. Held or on a stand is fine, but not worn on a hand or neck."],
-            ["Pick looks", "Marble, velvet, a bride wearing it. Same looks for the whole batch."],
+            ["Pick looks", MODEL_LOOKS_ON ? "Marble, velvet, a bride wearing it. Same looks for the whole batch." : "White, marble, velvet, festive. Same looks for the whole batch."],
             ["Keep the best", "Previews are free. Pay only for the photos you download."],
           ].map(([t, d], i) => (
             <li key={t} className="flex gap-3 sm:panel sm:block sm:p-4">
@@ -222,7 +225,7 @@ export default function StudioPage() {
           )}
         </div>
 
-        {(["product", "model"] as const).map((kind) => (
+        {(MODEL_LOOKS_ON ? (["product", "model"] as const) : (["product"] as const)).map((kind) => (
           <div key={kind}>
             <p className="mb-2 text-sm font-semibold text-dim">{kind === "product" ? "On a surface" : "Worn by a model"}</p>
             <div className="grid grid-cols-3 gap-2 sm:gap-2.5 xl:grid-cols-6">
@@ -358,6 +361,8 @@ function TrayCard({ piece: p, focused, onFocus, onType, onRetry, onRemove }: { p
           </button>
         </div>
         <p className={`text-xs font-medium ${status.color}`}>{status.text}</p>
+        {/* Retake guidance for this piece type, when the photo has problems. */}
+        {p.type && (p.check === "bad" || p.notes.length > 0) && <p className="text-[11px] leading-snug text-dim">{PIECES.find((o) => o.id === p.type)?.tip}</p>}
         {p.notes.map((n) => (
           <p key={n} className="text-[11px] leading-snug text-dim">{n}</p>
         ))}
@@ -440,9 +445,11 @@ function PendingTile({ shot: s, cutoutId, onRetry }: { shot: Shot; cutoutId?: st
         {!waiting && (
           <>
             <p className="text-xs text-dim">{s.note}</p>
-            <button onClick={onRetry} className="btn-quiet px-3 py-1.5 text-xs">
-              <Icon.refresh className="size-3.5" /> Try again, free
-            </button>
+            {!s.limited && (
+              <button onClick={onRetry} className="btn-quiet px-3 py-1.5 text-xs">
+                <Icon.refresh className="size-3.5" /> Try again, free
+              </button>
+            )}
           </>
         )}
       </div>
