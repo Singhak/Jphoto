@@ -74,6 +74,15 @@ const PIECE_PATHS: Record<PieceType, React.ReactNode> = {
       <path d="M24 30v4" /><path d="m21 37 3-3 3 3-3 4z" />
     </>
   ),
+  "necklace-set": (
+    <>
+      <path d="M14 8c0 12 4.5 19 10 19s10-7 10-19" />
+      <path d="M16.5 18c2 5 4.5 8 7.5 8s5.5-3 7.5-8" strokeDasharray="1 3.2" strokeWidth={2.4} />
+      <path d="M24 27v3" /><path d="m21.5 32.5 2.5-2.5 2.5 2.5-2.5 3.5z" />
+      <path d="M8 12v4" /><path d="m5.5 19 2.5-3 2.5 3-2.5 4z" />
+      <path d="M40 12v4" /><path d="m37.5 19 2.5-3 2.5 3-2.5 4z" />
+    </>
+  ),
   chain: (
     <>
       <path d="M10 8c0 14 6 24 14 24s14-10 14-24" strokeDasharray="3 2" strokeWidth={2.4} />

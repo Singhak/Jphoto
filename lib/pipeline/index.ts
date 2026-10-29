@@ -20,12 +20,14 @@ import {
   trimToContent,
 } from "./images";
 import { assertStyleFits, getStyle, type PieceType, placementFor } from "./presets";
+import { type SetSplit, splitSet } from "./set-split";
 
 export * from "./presets";
 export { checkFidelity, MIN_PSNR } from "./fidelity";
 export { MIN_JUDGE_SCORE } from "./gemini";
 export { MIN_ALIGN_SCORE } from "./align";
 export { sideBySide } from "./images";
+export { extractPart, type SetSplit, splitSet } from "./set-split";
 export { usageSummary } from "./usage";
 
 /** 4:5 portrait, the Instagram feed and marketplace-friendly ratio. Multiples of 32 suit the fill model. */
@@ -54,6 +56,8 @@ export interface Cutout {
   /** Plain cutout before the Gemini completion step (same as png when completion was skipped). */
   rawPng: Buffer;
   completion?: Omit<Completion, "png">;
+  /** Necklace sets only: where the necklace and each earring are, for placing them on a model. */
+  set?: SetSplit;
 }
 
 export interface ExtractOptions {
@@ -71,6 +75,12 @@ export interface ExtractOptions {
  * (on a plain surface or stand), not worn.
  */
 export async function extractJewellery(photo: Buffer, opts: ExtractOptions = {}): Promise<Cutout> {
+  const cutout = await extractCutout(photo, opts);
+  if (opts.piece === "necklace-set" && cutout.problems.length === 0) cutout.set = await splitSet(cutout.png);
+  return cutout;
+}
+
+async function extractCutout(photo: Buffer, opts: ExtractOptions): Promise<Cutout> {
   const prepared = await prepareInput(photo);
   const raw = (await hasTransparentBackground(prepared)) ? prepared : await cutoutEngine(prepared);
   const [mask, quality] = await Promise.all([maskReport(raw), inputQuality(prepared, raw)]);
@@ -183,7 +193,7 @@ export async function renderShot(cutout: Cutout, piece: PieceType, styleId: stri
         placement.poseHint && `${placement.poseHint}.`,
         `Use the exact ${pieceName} shown in this image. Do not change its design, stones, colour or proportions.`,
         `Keep the ${pieceName} at the same position and size in the frame. Replace only the grey background.`,
-        "Show exactly one piece of jewellery. Photorealistic, no text.",
+        piece === "necklace-set" ? "Show exactly this set: the necklace and its pair of earrings, nothing else. Photorealistic, no text." : "Show exactly one piece of jewellery. Photorealistic, no text.",
       ].filter(Boolean).join(" ");
       const scene = await geminiScene(image, prompt);
       background = await sharp(scene).resize(width, height, { fit: "cover" }).png().toBuffer();

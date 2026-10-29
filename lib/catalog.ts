@@ -3,6 +3,7 @@ import type { PieceType } from "./pipeline/presets";
 /** Piece names as jewellers say them. Order here is the order in the piece picker. */
 export const PIECES: { id: PieceType; label: string; hint: string }[] = [
   { id: "necklace", label: "Necklace", hint: "Haar, rani haar, choker" },
+  { id: "necklace-set", label: "Necklace Set", hint: "Necklace with matching earrings" },
   { id: "earring", label: "Earrings", hint: "Jhumka, studs, drops" },
   { id: "ring", label: "Ring", hint: "Finger ring, solitaire" },
   { id: "bangle", label: "Bangles", hint: "One or a stack" },

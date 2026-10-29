@@ -1,12 +1,15 @@
-export const PIECE_TYPES = ["necklace", "chain", "earring", "ring", "bangle", "kada", "bracelet", "pendant", "maang-tikka", "nose-pin", "payal"] as const;
+export const PIECE_TYPES = ["necklace", "necklace-set", "chain", "earring", "ring", "bangle", "kada", "bracelet", "pendant", "maang-tikka", "nose-pin", "payal"] as const;
 export type PieceType = (typeof PIECE_TYPES)[number];
 
 export type ShotKind = "product" | "model";
 export type Wearer = "woman" | "man" | "girl";
 
-/** Pieces each wearer can model. Product shots accept every piece. */
+/**
+ * Pieces each wearer can model. Product shots accept every piece.
+ * Necklace sets are product-only until model shots can place the necklace and each earring separately (see set-split.ts).
+ */
 const WEARABLE: Record<Wearer, readonly PieceType[]> = {
-  woman: PIECE_TYPES,
+  woman: PIECE_TYPES.filter((p) => p !== "necklace-set"),
   man: ["chain", "necklace", "pendant", "ring", "kada", "bracelet", "earring"],
   girl: ["earring", "chain", "necklace", "pendant", "bangle", "bracelet", "ring", "payal", "maang-tikka"],
 };
@@ -125,6 +128,8 @@ export function placementFor(piece: PieceType, kind: ShotKind): Placement {
     case "necklace":
     case "pendant":
       return { maxW: 0.5, maxH: 0.4, cx: 0.5, cy: 0.55, poseHint: "front view, head and shoulders crop, necklace worn on the neck and collarbone" };
+    case "necklace-set":
+      return { maxW: 0.5, maxH: 0.4, cx: 0.5, cy: 0.55, poseHint: "front view, head and shoulders crop, hair tucked behind both ears, necklace worn on the neck and a matching earring on each ear" };
     case "chain":
       return { maxW: 0.42, maxH: 0.4, cx: 0.5, cy: 0.55, poseHint: "front view, neck and upper chest crop, chain worn around the neck resting on the collarbone" };
     case "payal":

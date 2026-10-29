@@ -21,8 +21,8 @@ function key(userId: string, kind: "cutouts" | "renders", id: string, suffix: st
 export async function saveCutout(userId: string, cutout: Cutout): Promise<string> {
   const id = newId();
   // rawPng is only for debugging the completion step; it is not needed to render.
-  const { png, mask, quality, problems, warnings, completion } = cutout;
-  const meta = { mask, quality, problems, warnings, completion };
+  const { png, mask, quality, problems, warnings, completion, set } = cutout;
+  const meta = { mask, quality, problems, warnings, completion, set };
   await Promise.all([
     storage.put(key(userId, "cutouts", id, ".png"), png, "image/png"),
     storage.put(key(userId, "cutouts", id, ".json"), Buffer.from(JSON.stringify(meta)), "application/json"),
