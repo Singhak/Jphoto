@@ -131,10 +131,20 @@ async function extractCutout(photo: Buffer, opts: ExtractOptions): Promise<Cutou
   return { png: completed, rawPng, mask, quality, problems, warnings, completion };
 }
 
-/** fal's hosted BiRefNet when FAL_KEY is set, otherwise the free local model. CUTOUT_ENGINE=local|fal overrides. */
+/**
+ * fal's hosted BiRefNet when FAL_KEY is set, falling back to the free local model if fal fails (no balance,
+ * outage), so the jeweller never sees the error. CUTOUT_ENGINE=local|fal forces one engine with no fallback.
+ */
 async function cutoutEngine(prepared: Buffer): Promise<Buffer> {
-  const useFal = (process.env.CUTOUT_ENGINE ?? (process.env.FAL_KEY ? "fal" : "local")) === "fal";
-  return useFal ? removeBackground(await uploadPng(prepared)) : removeBackgroundLocal(prepared);
+  const forced = process.env.CUTOUT_ENGINE;
+  if (forced === "local" || (!forced && !process.env.FAL_KEY)) return removeBackgroundLocal(prepared);
+  try {
+    return await removeBackground(await uploadPng(prepared));
+  } catch (err) {
+    if (forced === "fal") throw err;
+    console.warn(`fal cutout failed, using the local model instead: ${(err as Error).message.split("\n")[0]}`);
+    return removeBackgroundLocal(prepared);
+  }
 }
 
 export type Engine = "local" | "fill" | "gemini";
