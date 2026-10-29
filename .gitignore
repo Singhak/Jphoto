@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +40,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# validation photos and outputs (jewellers' private photos)
+/validation/
+
+# local model cache
+/.cache/
+
+# source photos for the look-card samples (the finished samples in public/samples are committed)
+/samples/input/

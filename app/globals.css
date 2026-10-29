@@ -1,26 +1,65 @@
 @import "tailwindcss";
 
+/* A dark "photo studio" UI: neutral greys so the jewellery is the brightest thing on screen. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #121113;
+  --panel: #1b1a1d;
+  --raised: #252328;
+  --line: #322f36;
+  --text: #f2eee8;
+  --dim: #9d978f;
+  --light: #f0b65a;
+  --light-ink: #1c1407;
+  --ok: #5fcf92;
+  --bad: #f08473;
+  color-scheme: dark;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-raised: var(--raised);
+  --color-line: var(--line);
+  --color-text: var(--text);
+  --color-dim: var(--dim);
+  --color-light: var(--light);
+  --color-light-ink: var(--light-ink);
+  --color-ok: var(--ok);
+  --color-bad: var(--bad);
+  --font-sans: var(--font-inter);
+  --font-head: var(--font-bricolage);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40;
+}
+@utility btn-light {
+  @apply btn bg-light text-light-ink hover:brightness-110;
+}
+@utility btn-quiet {
+  @apply btn border border-line bg-raised text-text hover:border-dim;
+}
+@utility panel {
+  @apply rounded-xl border border-line bg-panel;
+}
+@utility field {
+  @apply w-full rounded-lg border border-line bg-raised px-3 py-2.5 text-sm text-text outline-none placeholder:text-dim focus:border-light;
+}
+
+@keyframes sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+.working::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 25%, rgba(240, 182, 90, 0.18) 50%, transparent 75%);
+  animation: sweep 1.4s infinite;
 }
