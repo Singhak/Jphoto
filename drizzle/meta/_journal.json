@@ -15,6 +15,13 @@
       "when": 1793267305903,
       "tag": "0001_payments_and_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793273432472,
+      "tag": "0002_brochures",
+      "breakpoints": true
     }
   ]
 }

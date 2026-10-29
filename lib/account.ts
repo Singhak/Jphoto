@@ -1,7 +1,8 @@
 import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { BROCHURE_UNLOCK, type Brochure } from "./brochure";
 import { WELCOME_CREDITS } from "./catalog";
 import { db } from "./db";
-import { creations, creditLedger, profiles, user } from "./db/schema";
+import { brochures, creations, creditLedger, profiles, user } from "./db/schema";
 import type { PieceType } from "./pipeline/presets";
 
 /** Server-side account logic. Credits only ever change here, inside a transaction. */
@@ -54,13 +55,19 @@ export async function getAccount(userId: string) {
     ...me,
     shopName: profile.shopName,
     phone: profile.phone,
+    address: profile.address,
+    city: profile.city,
+    gstin: profile.gstin,
+    hours: profile.hours,
     credits: profile.credits,
     creations: items.map(toCreation),
     ledger: ledger.map((e): LedgerEntry => ({ at: e.at.getTime(), kind: e.kind, credits: e.credits, note: e.note })),
   };
 }
 
-export async function updateProfile(userId: string, patch: { shopName?: string; phone?: string }) {
+export type ProfilePatch = Partial<Pick<typeof profiles.$inferSelect, "shopName" | "phone" | "address" | "city" | "gstin" | "hours">>;
+
+export async function updateProfile(userId: string, patch: ProfilePatch) {
   await ensureProfile(userId);
   await db.update(profiles).set(patch).where(eq(profiles.userId, userId));
 }
@@ -128,4 +135,42 @@ export async function testTopUp(userId: string, photos: number) {
     await tx.update(profiles).set({ credits: sql`${profiles.credits} + ${photos}` }).where(eq(profiles.userId, userId));
     await tx.insert(creditLedger).values({ userId, kind: "top-up", credits: photos, note: `Top-up of ${photos} photos (test mode)` });
   });
+}
+
+async function downloadedCount(userId: string) {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(creations)
+    .where(and(eq(creations.userId, userId), sql`${creations.downloadedAt} is not null`));
+  return row.n;
+}
+
+export const brochuresUnlocked = async (userId: string) => (await downloadedCount(userId)) >= BROCHURE_UNLOCK;
+
+/** The saved brochure for a collection, or null if the jeweller hasn't made one yet. */
+export async function getBrochure(userId: string, collection: string): Promise<Brochure | null> {
+  const [row] = await db.select().from(brochures).where(and(eq(brochures.userId, userId), eq(brochures.collection, collection)));
+  return row ? { collection: row.collection, template: row.template as Brochure["template"], title: row.title, subtitle: row.subtitle, items: row.items } : null;
+}
+
+export type SaveBrochureResult = { ok: true } | { ok: false; reason: "locked" | "bad-photos" };
+
+/** Only photos this jeweller has paid for, from this collection, can go in: the brochure shows them full size. */
+export async function saveBrochure(userId: string, b: Brochure): Promise<SaveBrochureResult> {
+  if (!(await brochuresUnlocked(userId))) return { ok: false, reason: "locked" };
+  const ids = b.items.map((i) => i.creationId);
+  if (new Set(ids).size !== ids.length) return { ok: false, reason: "bad-photos" };
+  if (ids.length) {
+    const rows = await db
+      .select({ id: creations.id })
+      .from(creations)
+      .where(and(eq(creations.userId, userId), eq(creations.collection, b.collection), inArray(creations.id, ids), sql`${creations.downloadedAt} is not null`));
+    if (rows.length !== ids.length) return { ok: false, reason: "bad-photos" };
+  }
+  const values = { template: b.template, title: b.title, subtitle: b.subtitle, items: b.items, updatedAt: new Date() };
+  await db
+    .insert(brochures)
+    .values({ userId, collection: b.collection, ...values })
+    .onConflictDoUpdate({ target: [brochures.userId, brochures.collection], set: values });
+  return { ok: true };
 }

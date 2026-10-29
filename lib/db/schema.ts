@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, index, integer, pgTable, serial, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import type { BrochureItem } from "../brochure";
 
 /**
  * Plain Postgres tables: nothing here depends on the host, so the database can move
@@ -78,6 +79,11 @@ export const profiles = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     shopName: text("shop_name").notNull().default(""),
     phone: text("phone").notNull().default(""),
+    /** Printed on brochures (lib/brochure.ts). */
+    address: text("address").notNull().default(""),
+    city: text("city").notNull().default(""),
+    gstin: text("gstin").notNull().default(""),
+    hours: text("hours").notNull().default(""),
     credits: integer("credits").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -156,4 +162,23 @@ export const usageEvents = pgTable(
     ref: text("ref"),
   },
   (t) => [index("usage_events_user_idx").on(t.userId, t.kind, t.at), index("usage_events_ref_idx").on(t.userId, t.ref)],
+);
+
+/** A jeweller's brochure for one collection: the layout choices and the details printed under each photo. */
+export const brochures = pgTable(
+  "brochures",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    collection: text("collection").notNull(),
+    template: text("template").notNull(),
+    title: text("title").notNull(),
+    subtitle: text("subtitle").notNull(),
+    /** In page order. Only downloaded photos from this collection (checked in lib/account.ts). */
+    items: jsonb("items").$type<BrochureItem[]>().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("brochures_user_collection_idx").on(t.userId, t.collection)],
 );

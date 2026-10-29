@@ -13,7 +13,14 @@ export async function GET() {
   return NextResponse.json({ ...(await getAccount(userId)), paymentsLive: paymentsLive() });
 }
 
-const Patch = z.object({ shopName: z.string().trim().max(120).optional(), phone: z.string().trim().max(30).optional() });
+const Patch = z.object({
+  shopName: z.string().trim().max(120).optional(),
+  phone: z.string().trim().max(30).optional(),
+  address: z.string().trim().max(240).optional(),
+  city: z.string().trim().max(80).optional(),
+  gstin: z.string().trim().max(20).optional(),
+  hours: z.string().trim().max(80).optional(),
+});
 
 export async function PATCH(req: Request) {
   const userId = await currentUserId();

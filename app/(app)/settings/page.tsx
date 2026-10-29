@@ -13,9 +13,10 @@ const THEMES: { id: Theme; label: string }[] = [
 ];
 
 export default function SettingsPage() {
-  const { email, shopName, phone, update, signOut, ready } = useStore();
+  const { email, shopName, phone, address, city, gstin, hours, update, signOut, ready } = useStore();
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
+  const [shop, setShop] = useState({ address: "", city: "", gstin: "", hours: "" });
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const { theme, setTheme } = useTheme();
@@ -24,7 +25,8 @@ export default function SettingsPage() {
     if (!ready) return;
     setName(shopName);
     setMobile(phone);
-  }, [ready, shopName, phone]);
+    setShop({ address, city, gstin, hours });
+  }, [ready, shopName, phone, address, city, gstin, hours]);
 
   return (
     <div className="mx-auto max-w-xl space-y-4">
@@ -36,7 +38,14 @@ export default function SettingsPage() {
           e.preventDefault();
           setError("");
           try {
-            await update({ shopName: name.trim(), phone: mobile.trim() });
+            await update({
+              shopName: name.trim(),
+              phone: mobile.trim(),
+              address: shop.address.trim(),
+              city: shop.city.trim(),
+              gstin: shop.gstin.trim().toUpperCase(),
+              hours: shop.hours.trim(),
+            });
             setSaved(true);
           } catch (err) {
             setError((err as Error).message);
@@ -51,8 +60,29 @@ export default function SettingsPage() {
         <label className="block">
           <span className="mb-1 block text-sm">Mobile number</span>
           <input className="field" inputMode="tel" value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="+91 98765 43210" />
-          <span className="mt-1 block text-xs text-dim">For order receipts and support. We never share it.</span>
+          <span className="mt-1 block text-xs text-dim">For order receipts and support, and printed on your brochures. We never share it otherwise.</span>
         </label>
+        <div className="space-y-4 border-t border-line pt-4">
+          <p className="text-sm text-dim">Shop details for your brochures. Leave any of them blank to keep them off.</p>
+          <label className="block">
+            <span className="mb-1 block text-sm">Shop address</span>
+            <textarea className="field" rows={2} value={shop.address} onChange={(e) => setShop({ ...shop, address: e.target.value })} placeholder="Shop no., street, area" />
+          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1 block text-sm">City and PIN</span>
+              <input className="field" value={shop.city} onChange={(e) => setShop({ ...shop, city: e.target.value })} placeholder="Jaipur 302001" />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-sm">GSTIN</span>
+              <input className="field uppercase" value={shop.gstin} onChange={(e) => setShop({ ...shop, gstin: e.target.value })} placeholder="08ABCDE1234F1Z5" />
+            </label>
+          </div>
+          <label className="block">
+            <span className="mb-1 block text-sm">Opening hours</span>
+            <input className="field" value={shop.hours} onChange={(e) => setShop({ ...shop, hours: e.target.value })} placeholder="Mon–Sat, 10:30am – 8:30pm" />
+          </label>
+        </div>
         <div className="flex items-center gap-3">
           <button className="btn-light">Save</button>
           {saved && <span className="flex items-center gap-1 text-sm text-ok"><Icon.check className="size-4" /> Saved</span>}

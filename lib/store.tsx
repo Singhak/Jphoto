@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Creation, LedgerEntry } from "./account";
 import { authClient } from "./auth-client";
+import type { Brochure } from "./brochure";
 
 /**
  * The signed-in jeweller's account, loaded from the server (lib/account.ts).
@@ -16,6 +17,11 @@ interface State {
   email: string;
   shopName: string;
   phone: string;
+  /** Shop details printed on brochures. */
+  address: string;
+  city: string;
+  gstin: string;
+  hours: string;
   credits: number;
   creations: Creation[];
   ledger: LedgerEntry[];
@@ -23,11 +29,11 @@ interface State {
   paymentsLive: boolean;
 }
 
-const empty: State = { name: "", email: "", shopName: "", phone: "", credits: 0, creations: [], ledger: [], paymentsLive: false };
+const empty: State = { name: "", email: "", shopName: "", phone: "", address: "", city: "", gstin: "", hours: "", credits: 0, creations: [], ledger: [], paymentsLive: false };
 
 interface Store extends State {
   ready: boolean;
-  update: (patch: Partial<Pick<State, "shopName" | "phone">>) => Promise<void>;
+  update: (patch: Partial<Pick<State, "shopName" | "phone" | "address" | "city" | "gstin" | "hours">>) => Promise<void>;
   /** Free credits while payments are in test mode. */
   testTopUp: (photos: number) => Promise<void>;
   /** Opens Cashfree checkout for a pack. The page leaves for Cashfree and comes back to /wallet?order=…. */
@@ -41,6 +47,10 @@ interface Store extends State {
   /** Has the server charge for the photos not downloaded before. Returns an error to show, or null. */
   chargeDownloads: (ids: string[]) => Promise<string | null>;
   flag: (id: string, note: string) => Promise<void>;
+  /** Photos paid for so far; brochures unlock at BROCHURE_UNLOCK. */
+  downloadedCount: number;
+  loadBrochure: (collection: string) => Promise<Brochure | null>;
+  saveBrochure: (brochure: Brochure) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -110,6 +120,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       flag: async (id, note) => {
         await api(`/api/creations/${id}/flag`, { method: "POST", body: JSON.stringify({ note }) });
         setState((s) => ({ ...s, creations: s.creations.map((c) => (c.id === id ? { ...c, flagged: true } : c)) }));
+      },
+      downloadedCount: state.creations.filter((c) => c.downloaded).length,
+      loadBrochure: async (collection) => (await api(`/api/brochures?collection=${encodeURIComponent(collection)}`)).brochure,
+      saveBrochure: async (brochure) => {
+        await api("/api/brochures", { method: "PUT", body: JSON.stringify(brochure) });
       },
       signOut: async () => {
         await authClient.signOut();

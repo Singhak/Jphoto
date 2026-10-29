@@ -55,6 +55,9 @@ export const Icon = {
   shield: ({ className }: P) => (
     <svg viewBox="0 0 24 24" className={className} {...base}><path d="M12 3 5 6v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6z" /><path d="m9 12 2 2 4-4" /></svg>
   ),
+  brochure: ({ className }: P) => (
+    <svg viewBox="0 0 24 24" className={className} {...base}><path d="M12 6.5C10 5 7 4.5 3.5 5v13c3.5-.5 6.5 0 8.5 1.5 2-1.5 5-2 8.5-1.5V5C17 4.5 14 5 12 6.5zM12 6.5v13" /></svg>
+  ),
   refresh: ({ className }: P) => (
     <svg viewBox="0 0 24 24" className={className} {...base}><path d="M20 11a8 8 0 0 0-14.5-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.5 4.5L20 16M20 20v-4h-4" /></svg>
   ),

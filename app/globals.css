@@ -78,3 +78,19 @@ body {
   background: linear-gradient(100deg, transparent 25%, rgba(240, 182, 90, 0.18) 50%, transparent 75%);
   animation: sweep 1.4s infinite;
 }
+
+/* Brochures (app/(app)/brochure): one A4 sheet per page, colours printed as shown. */
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  body {
+    background: none;
+  }
+  .brochure-page {
+    break-after: page;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
