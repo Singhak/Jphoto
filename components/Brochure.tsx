@@ -2,9 +2,9 @@
 
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
-import { type Brochure, type BrochureItem, PER_GRID_PAGE, specLine, TEMPLATES } from "@/lib/brochure";
+import { type Brochure, type BrochureItem, type LogoTone, logoBadge, PER_GRID_PAGE, specLine, TEMPLATES } from "@/lib/brochure";
 import { mobileDigits } from "@/lib/catalog";
-import { display, loadPhoto, renderFrame, toFile } from "@/lib/share-frames";
+import { display, loadLogo, loadPhoto, renderFrame, toFile } from "@/lib/share-frames";
 
 /**
  * On-screen preview of the brochure: A4 pages laid out in millimetres. The PDF itself is drawn on the server by
@@ -19,6 +19,8 @@ export interface Shop {
   city: string;
   gstin: string;
   hours: string;
+  logoUrl: string | null;
+  logoTone: LogoTone | "";
 }
 
 const photoSrc = (id: string) => `/api/renders/${id}?full=1`;
@@ -41,8 +43,11 @@ export function BrochurePages({ brochure, shop }: { brochure: Brochure; shop: Sh
   return (
     <>
       <Page bg={t.cover.bg} ink={t.cover.ink}>
-        <div className="flex items-center justify-between">
-          <span style={{ fontFamily: display }} className="text-[22px] tracking-wide">{shopTitle(shop)}</span>
+        <div className="flex items-center justify-between gap-4">
+          <span className="flex min-w-0 items-center gap-[4mm]">
+            <Logo shop={shop} bg={t.cover.bg} className="h-[12mm] max-w-[45mm]" />
+            <span style={{ fontFamily: display }} className="truncate text-[22px] tracking-wide">{shopTitle(shop)}</span>
+          </span>
           {shop.city && <span style={{ color: t.cover.muted }} className="text-[11px] tracking-[0.14em] uppercase">{shop.city}</span>}
         </div>
         <div className="mt-[8mm] flex flex-1 justify-center">
@@ -142,10 +147,13 @@ function BackPage({ brochure, shop }: { brochure: Brochure; shop: Shop }) {
 
   return (
     <Page bg={t.bg} ink={t.ink}>
-      <div className="mt-[10mm] space-y-3">
-        <div style={{ background: t.accent }} className="h-0.5 w-14" />
-        <h2 style={{ fontFamily: display, color: t.accent }} className="text-[52px]">Visit us</h2>
-        <p className="text-[16px] opacity-90">See every design in person{link ? ", or ask us on WhatsApp" : ""}.</p>
+      <div className="mt-[10mm] flex items-start justify-between gap-6">
+        <div className="space-y-3">
+          <div style={{ background: t.accent }} className="h-0.5 w-14" />
+          <h2 style={{ fontFamily: display, color: t.accent }} className="text-[52px]">Visit us</h2>
+          <p className="text-[16px] opacity-90">See every design in person{link ? ", or ask us on WhatsApp" : ""}.</p>
+        </div>
+        <Logo shop={shop} bg={t.bg} className="h-[20mm] max-w-[60mm]" />
       </div>
       <div className="mt-[14mm] flex items-start gap-[12mm]">
         <div className="flex-1 space-y-6">
@@ -200,6 +208,16 @@ function PageFoot({ brochure }: { brochure: Brochure }) {
   );
 }
 
+/** The shop logo, on a badge when it would vanish into this background. */
+function Logo({ shop, bg, className }: { shop: Shop; bg: string; className: string }) {
+  if (!shop.logoUrl || !shop.logoTone) return null;
+  const badge = logoBadge(shop.logoTone, bg);
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={shop.logoUrl} alt="" style={badge ? { background: badge } : undefined} className={`shrink-0 object-contain ${badge ? "rounded-[1.5mm] p-[1.5mm]" : ""} ${className}`} />
+  );
+}
+
 function Photo({ id, bg, className }: { id: string; bg: string; className: string }) {
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={photoSrc(id)} alt="" style={{ background: bg }} className={`aspect-[4/5] object-cover ${className}`} />;
@@ -207,7 +225,8 @@ function Photo({ id, bg, className }: { id: string; bg: string; className: strin
 
 /** One tall picture per piece for WhatsApp, in the brochure's colours: the full photo with the details under it. */
 export async function makeCard(item: BrochureItem, brochure: Brochure, shop: Shop): Promise<File> {
-  const text = { title: item.name, detail: specLine(item), code: item.code, shopName: shop.shopName, phone: shop.phone };
+  const logo = await loadLogo(shop.logoUrl, shop.logoTone);
+  const text = { title: item.name, detail: specLine(item), code: item.code, shopName: shop.shopName, phone: shop.phone, logo };
   const canvas = await renderFrame("card", await loadPhoto(item.creationId), text, TEMPLATES[brochure.template].cover);
   return toFile(canvas, item.code || item.name);
 }

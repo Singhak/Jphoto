@@ -4,18 +4,21 @@ import path from "node:path";
 import fontkit from "@pdf-lib/fontkit";
 import { type PDFFont, type PDFImage, type PDFPage, PDFDocument, rgb } from "pdf-lib";
 import QRCode from "qrcode";
-import { type Brochure, type BrochureItem, PER_GRID_PAGE, specLine, TEMPLATES } from "./brochure";
+import { type Brochure, type BrochureItem, type LogoTone, logoBadge, PER_GRID_PAGE, specLine, TEMPLATES } from "./brochure";
 import { mobileDigits } from "./catalog";
+import { loadShapers, type Shaper, splitRuns } from "./indic-text";
+import { readLogo } from "./logo";
 import { readPrintJpeg } from "./renders";
 import { storage } from "./storage";
 
 /**
  * Brochure PDFs, made on the server so they look the same from every phone and stay small enough for WhatsApp
- * (print JPEGs instead of the full PNGs: about 5–8 MB for 24 photos). Mirrors components/Brochure.tsx, which is the
- * on-screen preview: change both together.
+ * (print JPEGs instead of the full PNGs: about 3 MB for 24 photos). Mirrors components/Brochure.tsx, which is the
+ * on-screen preview: change both together. Hindi and the other Indian scripts go through lib/indic-text.ts.
  *
- * Load: about 1–2 s of CPU and under 150 MB for a 24-photo brochure, one at a time. Made PDFs are kept, keyed by
- * their content, so downloading the same brochure again is only a file read.
+ * Load, measured with 24 photos: about 0.5 s when the print JPEGs exist (they're made after download), about 7 s
+ * when it has to make them all; memory stays flat. One PDF is made at a time. Made PDFs are kept, keyed by their
+ * content, so downloading the same brochure again is only a file read.
  */
 
 export interface PdfShop {
@@ -25,10 +28,13 @@ export interface PdfShop {
   city: string;
   gstin: string;
   hours: string;
+  logoTone: LogoTone | "";
+  /** Part of the kept PDF's key, so a new logo makes a new PDF. */
+  logoVersion: number;
 }
 
 /** Bump when the layout below changes, so kept PDFs are made again. */
-const LAYOUT_VERSION = 1;
+const LAYOUT_VERSION = 3;
 
 const A4 = { w: 595.28, h: 841.89 };
 const mm = (v: number) => (v * 72) / 25.4;
@@ -50,12 +56,40 @@ let fontBytes: Promise<Buffer[]> | null = null;
 const loadFontBytes = () =>
   (fontBytes ??= Promise.all(["Marcellus-Regular.ttf", "Inter-Regular.ttf", "Inter-SemiBold.ttf"].map((f) => readFile(path.join(process.cwd(), "lib", "fonts", f)))));
 
+const graphemes = new Intl.Segmenter("en", { granularity: "grapheme" });
+
 /** One page, drawn in millimetres from the top-left like the HTML. `y` is the text baseline. */
 class Sheet {
   constructor(
     readonly page: PDFPage,
     readonly fonts: Fonts,
+    readonly shapers: Map<string, Shaper>,
   ) {}
+
+  /** Width in points. Indian-script runs are measured as HarfBuzz shapes them. */
+  private measure(s: string, size: number, font: keyof Fonts) {
+    let w = 0;
+    for (const run of splitRuns(s)) {
+      const shaper = run.script && this.shapers.get(run.script);
+      w += shaper ? (shaper.shape(run.text).advance * size) / shaper.upem : this.fonts[font].widthOfTextAtSize(run.text, size);
+    }
+    return w;
+  }
+
+  private drawLine(s: string, x: number, y: number, size: number, font: keyof Fonts, fill: string) {
+    for (const run of splitRuns(s)) {
+      const shaper = run.script && this.shapers.get(run.script);
+      if (shaper) {
+        const scale = size / shaper.upem;
+        const { glyphs, advance } = shaper.shape(run.text);
+        for (const g of glyphs) if (g.path) this.page.drawSvgPath(g.path, { x: x + g.x * scale, y: y + g.y * scale, scale, color: color(fill) });
+        x += advance * scale;
+      } else {
+        this.page.drawText(run.text, { x, y, size, font: this.fonts[font], color: color(fill) });
+        x += this.fonts[font].widthOfTextAtSize(run.text, size);
+      }
+    }
+  }
 
   rect(x: number, y: number, w: number, h: number, fill: string) {
     this.page.drawRectangle({ x: mm(x), y: A4.h - mm(y + h), width: mm(w), height: mm(h), color: color(fill) });
@@ -69,31 +103,56 @@ class Sheet {
     this.page.drawImage(img, { x: mm(x) + (mm(w) - dw) / 2, y: A4.h - mm(y + h) + (mm(h) - dh) / 2, width: dw, height: dh });
   }
 
+  /**
+   * The logo fitted to `h` mm tall (narrower if it would pass `maxW`), on a rounded badge when it would vanish
+   * into `bg`. `x` is its left edge, or its right edge with align "right". Returns its width in mm.
+   */
+  logo(img: PDFImage, tone: LogoTone, x: number, y: number, h: number, maxW: number, bg: string, align: "left" | "right" = "left") {
+    const badge = logoBadge(tone, bg);
+    const pad = badge ? h * 0.12 : 0;
+    let ih = h - pad * 2;
+    let iw = (ih * img.width) / img.height;
+    if (iw > maxW - pad * 2) {
+      iw = maxW - pad * 2;
+      ih = (iw * img.height) / img.width;
+    }
+    const w = iw + pad * 2, boxH = ih + pad * 2;
+    const left = align === "right" ? x - w : x;
+    const top = y + (h - boxH) / 2;
+    if (badge) {
+      const r = mm(1.5), W = mm(w), H = mm(boxH);
+      const path = `M${r} 0H${W - r}Q${W} 0 ${W} ${r}V${H - r}Q${W} ${H} ${W - r} ${H}H${r}Q0 ${H} 0 ${H - r}V${r}Q0 0 ${r} 0Z`;
+      this.page.drawSvgPath(path, { x: mm(left), y: A4.h - mm(top), color: color(badge) });
+    }
+    this.page.drawImage(img, { x: mm(left + pad), y: A4.h - mm(top + pad + ih), width: mm(iw), height: mm(ih) });
+    return w;
+  }
+
   /** One line, shortened with "…" to fit `max` mm. Returns its width in mm. */
   text(s: string, x: number, y: number, o: { size: number; color: string; font?: keyof Fonts; align?: "left" | "right" | "center"; max?: number }) {
     if (!s) return 0;
-    const font = this.fonts[o.font ?? "sans"];
+    const font = o.font ?? "sans";
     let line = s;
-    if (o.max) {
-      const max = mm(o.max);
-      while (line.length > 1 && font.widthOfTextAtSize(line, o.size) > max) line = line.slice(0, -1);
-      if (line !== s) line = `${line.trimEnd()}…`;
+    if (o.max && this.measure(line, o.size, font) > mm(o.max)) {
+      // Shorten by whole letters (a Hindi letter with its vowel sign is one), keeping room for the "…".
+      const parts = Array.from(graphemes.segment(s), (g) => g.segment);
+      while (parts.length > 1 && this.measure(`${parts.join("").trimEnd()}…`, o.size, font) > mm(o.max)) parts.pop();
+      line = `${parts.join("").trimEnd()}…`;
     }
-    const w = font.widthOfTextAtSize(line, o.size);
+    const w = this.measure(line, o.size, font);
     const left = o.align === "right" ? mm(x) - w : o.align === "center" ? mm(x) - w / 2 : mm(x);
-    this.page.drawText(line, { x: left, y: A4.h - mm(y), size: o.size, font, color: color(o.color) });
+    this.drawLine(line, left, A4.h - mm(y), o.size, font, o.color);
     return (w * 25.4) / 72;
   }
 
   /** Splits text into lines that fit `max` mm, at most `lines` of them (the last one shortened). */
   wrap(s: string, size: number, max: number, lines: number, font: keyof Fonts = "sans") {
-    const f = this.fonts[font];
     const out: string[] = [];
     for (const para of s.split("\n")) {
       let line = "";
       for (const word of para.split(/\s+/).filter(Boolean)) {
         const next = line ? `${line} ${word}` : word;
-        if (line && f.widthOfTextAtSize(next, size) > mm(max)) {
+        if (line && this.measure(next, size, font) > mm(max)) {
           out.push(line);
           line = word;
         } else line = next;
@@ -118,6 +177,7 @@ const waLink = (phone: string) => {
 
 async function build(userId: string, b: Brochure, shop: PdfShop): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
+  const shapers = await loadShapers();
   doc.registerFontkit(fontkit);
   const [display, sans, bold] = await loadFontBytes();
   const fonts: Fonts = {
@@ -134,10 +194,13 @@ async function build(userId: string, b: Brochure, shop: PdfShop): Promise<Uint8A
   const images = new Map<string, PDFImage>();
   for (const item of b.items) images.set(item.creationId, await doc.embedJpg(await readPrintJpeg(userId, item.creationId)));
 
+  const logo = shop.logoTone ? await doc.embedPng(await readLogo(userId)).catch(() => null) : null;
+  const logoTone = shop.logoTone || "dark";
+
   const t = TEMPLATES[b.template];
   const title = b.title || b.collection;
   const sheet = (bg: string) => {
-    const s = new Sheet(doc.addPage([A4.w, A4.h]), fonts);
+    const s = new Sheet(doc.addPage([A4.w, A4.h]), fonts, shapers);
     s.rect(0, 0, 210, 297, bg);
     return s;
   };
@@ -149,8 +212,10 @@ async function build(userId: string, b: Brochure, shop: PdfShop): Promise<Uint8A
   {
     const p = t.cover;
     const s = sheet(p.bg);
-    s.text(shopTitle(shop), PAD_X, PAD_Y + 6, { size: px(22), color: p.ink, font: "display", max: 120 });
-    s.text(shop.city.toUpperCase(), 210 - PAD_X, PAD_Y + 5.5, { size: px(11), color: p.muted, align: "right", max: 55 });
+    const logoW = logo ? s.logo(logo, logoTone, PAD_X, PAD_Y, 12, 45, p.bg) + 4 : 0;
+    const nameY = logo ? PAD_Y + 8 : PAD_Y + 6;
+    s.text(shopTitle(shop), PAD_X + logoW, nameY, { size: px(22), color: p.ink, font: "display", max: 120 - logoW });
+    s.text(shop.city.toUpperCase(), 210 - PAD_X, nameY - 0.5, { size: px(11), color: p.muted, align: "right", max: 55 });
     const hero = featured[0] ?? b.items[0];
     if (hero) s.image(images.get(hero.creationId)!, (210 - 128) / 2, 28, 128, 160, p.photo);
     let y = 196;
@@ -234,6 +299,7 @@ async function build(userId: string, b: Brochure, shop: PdfShop): Promise<Uint8A
     const p = t.cover;
     const s = sheet(p.bg);
     const link = waLink(shop.phone);
+    if (logo) s.logo(logo, logoTone, 210 - PAD_X, PAD_Y + 10, 20, 60, p.bg, "right");
     s.rect(PAD_X, PAD_Y + 10, 14, 0.6, p.accent);
     s.text("Visit us", PAD_X, PAD_Y + 27, { size: px(52), color: p.accent, font: "display" });
     s.text(`See every design in person${link ? ", or ask us on WhatsApp" : ""}.`, PAD_X, PAD_Y + 37, { size: px(16), color: p.ink, max: CONTENT });

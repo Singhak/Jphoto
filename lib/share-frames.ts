@@ -1,4 +1,5 @@
 import { Marcellus } from "next/font/google";
+import { type LogoTone, logoBadge } from "./brochure";
 import { mobileDigits } from "./catalog";
 
 /**
@@ -19,6 +20,8 @@ export interface FrameText {
   code: string;
   shopName: string;
   phone: string;
+  /** Drawn in place of the shop name where there's room for only one of them. */
+  logo?: { img: HTMLImageElement; tone: LogoTone } | null;
 }
 
 export interface Palette {
@@ -92,6 +95,32 @@ class Canvas {
     return width;
   }
 
+  /**
+   * The logo fitted into `h` px tall and at most `maxW` wide, on a rounded badge when it would vanish into `bg`.
+   * `x` is its left edge, centre or right edge, as `align` says.
+   */
+  logo(logo: NonNullable<FrameText["logo"]>, x: number, y: number, h: number, maxW: number, bg: string, align: "left" | "center" | "right" = "left") {
+    const { ctx } = this;
+    const badge = logoBadge(logo.tone, bg);
+    const pad = badge ? Math.round(h * 0.14) : 0;
+    let ih = h - pad * 2;
+    let iw = (ih * logo.img.naturalWidth) / logo.img.naturalHeight;
+    if (iw > maxW - pad * 2) {
+      iw = maxW - pad * 2;
+      ih = (iw * logo.img.naturalHeight) / logo.img.naturalWidth;
+    }
+    const w = iw + pad * 2, bh = ih + pad * 2;
+    const left = align === "right" ? x - w : align === "center" ? x - w / 2 : x;
+    const top = y + (h - bh) / 2;
+    if (badge) {
+      ctx.fillStyle = badge;
+      ctx.beginPath();
+      ctx.roundRect(left, top, w, bh, Math.round(h * 0.12));
+      ctx.fill();
+    }
+    ctx.drawImage(logo.img, left + pad, top + pad, iw, ih);
+  }
+
   diamond(cx: number, cy: number, r: number, color: string) {
     const { ctx } = this;
     ctx.fillStyle = color;
@@ -127,7 +156,10 @@ export const FRAMES: Frame[] = [
       c.outline(58, 46, 964, 1198, p.accent, 2);
       if (t.title) {
         c.text(t.title, 72, 1310, { size: 40, color: p.accent, serif: true, max: 520 });
-        c.text(shopTitle(t), 1008, 1308, { size: 30, color: p.ink, serif: true, align: "right", max: 400 });
+        if (t.logo) c.logo(t.logo, 1008, 1260, 68, 400, p.bg, "right");
+        else c.text(shopTitle(t), 1008, 1308, { size: 30, color: p.ink, serif: true, align: "right", max: 400 });
+      } else if (t.logo) {
+        c.logo(t.logo, 540, 1260, 68, 900, p.bg, "center");
       } else {
         c.text(shopTitle(t), 540, 1308, { size: 36, color: p.accent, serif: true, align: "center", max: 900 });
       }
@@ -141,8 +173,9 @@ export const FRAMES: Frame[] = [
     h: 1920,
     palette: EMERALD,
     draw: (c, img, t, p) => {
-      c.text(shopTitle(t), 540, 170, { size: 56, color: p.ink, serif: true, align: "center", max: 960 });
-      c.rect(500, 206, 80, 3, p.accent);
+      if (t.logo) c.logo(t.logo, 540, 70, 130, 700, p.bg, "center");
+      else c.text(shopTitle(t), 540, 170, { size: 56, color: p.ink, serif: true, align: "center", max: 960 });
+      c.rect(500, 222, 80, 3, p.accent);
       c.photo(img, 60, 280, 960, 1200);
       c.text(t.title, 540, 1610, { size: 64, color: p.accent, serif: true, align: "center", max: 960 });
       c.text(t.detail, 540, 1672, { size: 34, color: p.ink, align: "center", max: 960 });
@@ -160,7 +193,10 @@ export const FRAMES: Frame[] = [
       c.photo(img, 180, 56, 720, 900);
       if (t.title) {
         c.text(t.title, 180, 1026, { size: 32, color: p.ink, serif: true, max: 400 });
-        c.text(shopTitle(t), 900, 1024, { size: 24, color: p.muted, weight: 600, align: "right", max: 300, spacing: 2 });
+        if (t.logo) c.logo(t.logo, 900, 980, 64, 300, p.bg, "right");
+        else c.text(shopTitle(t), 900, 1024, { size: 24, color: p.muted, weight: 600, align: "right", max: 300, spacing: 2 });
+      } else if (t.logo) {
+        c.logo(t.logo, 540, 980, 64, 720, p.bg, "center");
       } else {
         c.text(shopTitle(t), 540, 1026, { size: 34, color: p.ink, serif: true, align: "center", max: 720 });
       }
@@ -180,7 +216,8 @@ export const FRAMES: Frame[] = [
       // A stamp in the corner, with the shop's first letter.
       c.outline(1564, 80, 156, 186, p.accent, 3, [10, 8]);
       c.outline(1578, 94, 128, 158, p.accent, 1);
-      c.text(shopTitle(t).charAt(0).toUpperCase(), 1642, 202, { size: 84, color: p.accent, serif: true, align: "center" });
+      if (t.logo) c.logo(t.logo, 1642, 104, 138, 116, p.bg, "center");
+      else c.text(shopTitle(t).charAt(0).toUpperCase(), 1642, 202, { size: 84, color: p.accent, serif: true, align: "center" });
       c.text("GREETINGS FROM", 1060, 380, { size: 22, color: p.muted, weight: 600, spacing: 5 });
       c.text(shopTitle(t), 1060, 462, { size: 64, color: p.ink, serif: true, max: 660 });
       c.rect(1060, 500, 80, 3, p.accent);
@@ -205,7 +242,8 @@ export const FRAMES: Frame[] = [
       c.photo(img, 120, 100, 840, 1050);
       c.outline(110, 90, 860, 1070, p.accent, 1.5);
       c.text(t.title || shopTitle(t), 540, 1236, { size: 46, color: p.accent, serif: true, align: "center", max: 860 });
-      if (t.title) c.text(shopTitle(t).toUpperCase(), 540, 1284, { size: 24, color: p.ink, weight: 600, align: "center", max: 860, spacing: 4 });
+      if (t.title && t.logo) c.logo(t.logo, 540, 1254, 54, 500, p.bg, "center");
+      else if (t.title) c.text(shopTitle(t).toUpperCase(), 540, 1284, { size: 24, color: p.ink, weight: 600, align: "center", max: 860, spacing: 4 });
     },
   },
   {
@@ -222,7 +260,8 @@ export const FRAMES: Frame[] = [
       c.text(t.title, 56, 1434, { size: 52, color: p.accent, serif: true, max: 968 - (code ? code + 24 : 0) });
       c.text(t.detail, 56, 1484, { size: 30, color: p.ink, max: 968 });
       c.rect(56, 1518, 968, 2, p.line);
-      c.text(shopTitle(t), 56, 1570, { size: 34, color: p.ink, serif: true, max: 560 });
+      if (t.logo) c.logo(t.logo, 56, 1532, 52, 560, p.bg);
+      else c.text(shopTitle(t), 56, 1570, { size: 34, color: p.ink, serif: true, max: 560 });
       c.text(contact(t), 1024, 1568, { size: 26, color: p.muted, align: "right", max: 400 });
     },
   },
@@ -230,12 +269,20 @@ export const FRAMES: Frame[] = [
 
 export type FrameId = (typeof FRAMES)[number]["id"];
 
-/** Full-size photo, which the server only sends once it has been paid for. */
-export async function loadPhoto(creationId: string) {
+async function loadImage(src: string) {
   const img = new Image();
-  img.src = `/api/renders/${creationId}?full=1`;
+  img.src = src;
   await img.decode();
   return img;
+}
+
+/** Full-size photo, which the server only sends once it has been paid for. */
+export const loadPhoto = (creationId: string) => loadImage(`/api/renders/${creationId}?full=1`);
+
+/** The shop logo for frames, or null when there is none or it won't load (frames then show the shop name). */
+export async function loadLogo(url: string | null, tone: LogoTone | ""): Promise<FrameText["logo"]> {
+  if (!url || !tone) return null;
+  return loadImage(url).then((img) => ({ img, tone }), () => null);
 }
 
 /** Draws a frame at full size. `palette` overrides the frame's own colours (the brochure passes its style). */

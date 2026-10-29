@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Creation, LedgerEntry } from "./account";
 import { authClient } from "./auth-client";
-import type { Brochure } from "./brochure";
+import type { Brochure, LogoTone } from "./brochure";
 
 /**
  * The signed-in jeweller's account, loaded from the server (lib/account.ts).
@@ -22,6 +22,9 @@ interface State {
   city: string;
   gstin: string;
   hours: string;
+  /** "" when the shop has no logo. */
+  logoTone: LogoTone | "";
+  logoVersion: number;
   credits: number;
   creations: Creation[];
   ledger: LedgerEntry[];
@@ -29,7 +32,7 @@ interface State {
   paymentsLive: boolean;
 }
 
-const empty: State = { name: "", email: "", shopName: "", phone: "", address: "", city: "", gstin: "", hours: "", credits: 0, creations: [], ledger: [], paymentsLive: false };
+const empty: State = { name: "", email: "", shopName: "", phone: "", address: "", city: "", gstin: "", hours: "", logoTone: "", logoVersion: 0, credits: 0, creations: [], ledger: [], paymentsLive: false };
 
 interface Store extends State {
   ready: boolean;
@@ -51,6 +54,10 @@ interface Store extends State {
   downloadedCount: number;
   loadBrochure: (collection: string) => Promise<Brochure | null>;
   saveBrochure: (brochure: Brochure) => Promise<void>;
+  /** The logo's address, or null when there is none. */
+  logoUrl: string | null;
+  uploadLogo: (file: File) => Promise<void>;
+  removeLogo: () => Promise<void>;
   /** The saved brochure as a PDF, made on the server. */
   brochurePdf: (collection: string) => Promise<Blob>;
   signOut: () => Promise<void>;
@@ -127,6 +134,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       loadBrochure: async (collection) => (await api(`/api/brochures?collection=${encodeURIComponent(collection)}`)).brochure,
       saveBrochure: async (brochure) => {
         await api("/api/brochures", { method: "PUT", body: JSON.stringify(brochure) });
+      },
+      logoUrl: state.logoTone ? `/api/account/logo?v=${state.logoVersion}` : null,
+      uploadLogo: async (file) => {
+        const form = new FormData();
+        form.append("logo", file);
+        const res = await fetch("/api/account/logo", { method: "POST", body: form });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error ?? "Couldn’t upload the logo. Try again.");
+        setState((s) => ({ ...s, logoTone: data.logoTone, logoVersion: data.logoVersion }));
+      },
+      removeLogo: async () => {
+        const data = await api("/api/account/logo", { method: "DELETE" });
+        setState((s) => ({ ...s, logoTone: data.logoTone, logoVersion: data.logoVersion }));
       },
       brochurePdf: async (collection) => {
         const res = await fetch("/api/brochures/pdf", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ collection }) });

@@ -65,6 +65,8 @@ export async function getAccount(userId: string) {
     city: profile.city,
     gstin: profile.gstin,
     hours: profile.hours,
+    logoTone: profile.logoTone,
+    logoVersion: profile.logoVersion,
     credits: profile.credits,
     creations: items.map(toCreation),
     ledger: ledger.map((e): LedgerEntry => ({ at: e.at.getTime(), kind: e.kind, credits: e.credits, note: e.note })),
@@ -207,8 +209,28 @@ export async function saveBrochure(userId: string, b: Brochure): Promise<SaveBro
 export async function getShop(userId: string) {
   await ensureProfile(userId);
   const [p] = await db
-    .select({ shopName: profiles.shopName, phone: profiles.phone, address: profiles.address, city: profiles.city, gstin: profiles.gstin, hours: profiles.hours })
+    .select({
+      shopName: profiles.shopName,
+      phone: profiles.phone,
+      address: profiles.address,
+      city: profiles.city,
+      gstin: profiles.gstin,
+      hours: profiles.hours,
+      logoTone: profiles.logoTone,
+      logoVersion: profiles.logoVersion,
+    })
     .from(profiles)
     .where(eq(profiles.userId, userId));
   return p;
+}
+
+/** Records a new logo (already stored by lib/logo.ts), or removes it with tone "". */
+export async function setLogo(userId: string, tone: (typeof profiles.logoTone.enumValues)[number]) {
+  await ensureProfile(userId);
+  const [row] = await db
+    .update(profiles)
+    .set({ logoTone: tone, logoVersion: sql`${profiles.logoVersion} + 1` })
+    .where(eq(profiles.userId, userId))
+    .returning({ logoVersion: profiles.logoVersion });
+  return row.logoVersion;
 }

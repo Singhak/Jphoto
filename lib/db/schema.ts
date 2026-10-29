@@ -84,6 +84,10 @@ export const profiles = pgTable(
     city: text("city").notNull().default(""),
     gstin: text("gstin").notNull().default(""),
     hours: text("hours").notNull().default(""),
+    /** The shop logo is stored at users/{id}/logo.png (lib/logo.ts). "" means no logo. */
+    logoTone: text("logo_tone", { enum: ["", "dark", "light", "solid"] }).notNull().default(""),
+    /** Goes up with each new logo, so browsers and kept PDFs pick up the new one. */
+    logoVersion: integer("logo_version").notNull().default(0),
     credits: integer("credits").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

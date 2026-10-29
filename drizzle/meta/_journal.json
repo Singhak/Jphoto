@@ -29,6 +29,13 @@
       "when": 1793274985407,
       "tag": "0003_piece_details",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793278016428,
+      "tag": "0004_shop_logo",
+      "breakpoints": true
     }
   ]
 }

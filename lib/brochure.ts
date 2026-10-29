@@ -81,6 +81,25 @@ export const TEMPLATES: Record<TemplateId, { label: string; blurb: string; cover
 /** Photos per inside grid page: 3 across, 2 down, at the photos' own 4:5 shape so nothing is cropped. */
 export const PER_GRID_PAGE = 6;
 
+/**
+ * How a logo reads: mostly dark marks, mostly light marks, or a solid picture with its own background.
+ * Set when it's uploaded (lib/logo.ts).
+ */
+export type LogoTone = "dark" | "light" | "solid";
+
+const luminance = (hex: string) => {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+
+/** A badge to sit the logo on when it would vanish into the background, or null when it reads fine as it is. */
+export function logoBadge(tone: LogoTone, bg: string): string | null {
+  const l = luminance(bg);
+  if (tone === "dark" && l < 0.45) return "#FFFFFF";
+  if (tone === "light" && l > 0.55) return "#15130F";
+  return null;
+}
+
 /** "22K · approx. 42.6 g", skipping whatever is blank. */
 export const specLine = (item: Pick<PieceDetails, "purity" | "weight">) =>
   [item.purity, item.weight && `approx. ${item.weight} g`].filter(Boolean).join(" · ");

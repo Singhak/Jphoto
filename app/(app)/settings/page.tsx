@@ -13,7 +13,9 @@ const THEMES: { id: Theme; label: string }[] = [
 ];
 
 export default function SettingsPage() {
-  const { email, shopName, phone, address, city, gstin, hours, update, signOut, ready } = useStore();
+  const { email, shopName, phone, address, city, gstin, hours, update, signOut, ready, logoUrl, uploadLogo, removeLogo } = useStore();
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoError, setLogoError] = useState("");
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
   const [shop, setShop] = useState({ address: "", city: "", gstin: "", hours: "" });
@@ -89,6 +91,52 @@ export default function SettingsPage() {
           {error && <span className="text-sm text-bad">{error}</span>}
         </div>
       </form>
+
+      <div className="panel p-5">
+        <p className="text-sm font-semibold">Shop logo</p>
+        <p className="mt-1 text-sm text-dim">Printed on your brochures and share pictures. A PNG with a see-through background looks best.</p>
+        {logoUrl && (
+          // Shown on both a dark and a light ground, the way it will appear on brochures.
+          <div className="mt-3 grid grid-cols-2 overflow-hidden rounded-lg border border-line">
+            {["#15130F", "#FAFAF8"].map((bg) => (
+              <div key={bg} style={{ background: bg }} className="flex h-24 items-center justify-center p-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={logoUrl} alt="Your shop logo" className="max-h-full max-w-full object-contain" />
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="mt-3 flex items-center gap-3">
+          <label className={`btn-quiet cursor-pointer ${logoBusy ? "pointer-events-none opacity-40" : ""}`}>
+            <Icon.upload className="size-4" /> {logoBusy ? "Uploading…" : logoUrl ? "Replace logo" : "Upload logo"}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="sr-only"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (!file) return;
+                setLogoBusy(true);
+                setLogoError("");
+                try {
+                  await uploadLogo(file);
+                } catch (err) {
+                  setLogoError((err as Error).message);
+                } finally {
+                  setLogoBusy(false);
+                }
+              }}
+            />
+          </label>
+          {logoUrl && (
+            <button onClick={() => removeLogo().catch((err) => setLogoError((err as Error).message))} className="py-2 text-sm text-dim hover:text-text">
+              Remove
+            </button>
+          )}
+        </div>
+        {logoError && <p className="mt-2 text-sm text-bad">{logoError}</p>}
+      </div>
 
       <div className="panel p-5">
         <p className="text-sm font-semibold">Appearance</p>
