@@ -29,7 +29,7 @@ export { MIN_JUDGE_SCORE } from "./gemini";
 export { MIN_ALIGN_SCORE } from "./align";
 export { sideBySide } from "./images";
 export { extractPart, type SetSplit, splitSet } from "./set-split";
-export { usageSummary } from "./usage";
+export { usageSummary, withSpend } from "./usage";
 
 /** 4:5 portrait, the Instagram feed and marketplace-friendly ratio. Multiples of 32 suit the fill model. */
 export const CANVAS = { width: 1024, height: 1280 };

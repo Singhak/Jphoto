@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, doublePrecision, index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import type { BrochureLayoutItem } from "../brochure";
+import type { PaidCall } from "../pipeline/usage";
 
 /**
  * Plain Postgres tables: nothing here depends on the host, so the database can move
@@ -156,8 +157,8 @@ export const payments = pgTable(
 );
 
 /**
- * Free work done for a jeweller: photo checks and previews. Each one costs us an AI call even if nothing
- * is downloaded, so lib/limits.ts caps them per day and per look.
+ * Work done for a jeweller that costs us even if nothing is bought: photo checks and previews (AI calls),
+ * brochure PDFs and zips (server time), payment orders (Cashfree). lib/limits.ts caps them per day, and previews per look.
  */
 export const usageEvents = pgTable(
   "usage_events",
@@ -167,11 +168,34 @@ export const usageEvents = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
-    kind: text("kind", { enum: ["check", "preview"] }).notNull(),
+    kind: text("kind", { enum: ["check", "preview", "pdf", "zip", "order"] }).notNull(),
     /** Previews only: "{cutoutId}:{styleId}", to count redos of one look. */
     ref: text("ref"),
   },
   (t) => [index("usage_events_user_idx").on(t.userId, t.kind, t.at), index("usage_events_ref_idx").on(t.userId, t.ref)],
+);
+
+/**
+ * Paid AI calls made for one photo check or preview, whether or not it succeeded or was shown.
+ * Compared with downloads by `npm run spend` to see what a sold photo really costs us.
+ */
+export const aiSpend = pgTable(
+  "ai_spend",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+    kind: text("kind", { enum: ["check", "preview"] }).notNull(),
+    /** Previews only: "{cutoutId}:{styleId}", as in usage_events. */
+    ref: text("ref"),
+    /** Count of each paid call (lib/pipeline/usage.ts). */
+    calls: jsonb("calls").$type<Record<PaidCall, number>>().notNull(),
+    /** Exact, from the megapixels sent. Other calls are priced in the report. */
+    falFillUsd: doublePrecision("fal_fill_usd").notNull(),
+  },
+  (t) => [index("ai_spend_at_idx").on(t.at)],
 );
 
 /** A jeweller's brochure for one collection: the layout choices and the details printed under each photo. */

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { currentUserId, unauthorized } from "@/lib/auth";
+import { takeUse } from "@/lib/limits";
 import { createOrder } from "@/lib/payments";
 import { reportError } from "@/lib/report";
 
@@ -14,6 +15,8 @@ export async function POST(req: Request) {
   if (!userId) return unauthorized();
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Bad request" }, { status: 400 });
+  const limited = await takeUse(userId, "order");
+  if (limited) return NextResponse.json({ error: limited }, { status: 429 });
 
   try {
     const site = process.env.BETTER_AUTH_URL ?? new URL(req.url).origin;

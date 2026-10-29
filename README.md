@@ -27,7 +27,7 @@ Open http://localhost:3000. The landing page is public; the studio needs Google 
 | `CASHFREE_APP_ID`, `CASHFREE_SECRET_KEY`, `CASHFREE_ENV` | Real payments. Without them, top-ups add free test credits (development only). |
 | `STORAGE_DRIVER` and `S3_*` | Where photos are kept. Use `s3` in production; `local` writes to `.cache/storage`. |
 | `NEXT_PUBLIC_MODEL_LOOKS` | `1` shows model looks. Off until exact mode is built. Read at build time. |
-| `LIMIT_*` | Free photo checks and previews per account (see `lib/limits.ts`). |
+| `LIMIT_*` | Daily caps per account on photo checks, previews, brochure PDFs, zips and payment orders (see `lib/limits.ts`). |
 | `NEXT_PUBLIC_SENTRY_DSN` | Error monitoring in Sentry, server and browser. Off when empty. Read at build time. Add `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` at build time for readable stack traces. |
 
 ## How it fits together
@@ -42,10 +42,16 @@ Open http://localhost:3000. The landing page is public; the studio needs Google 
 ## Checks
 
 ```bash
-npx tsc --noEmit
+npm run typecheck
 npm run lint
+npm test              # payments, downloads and limits against a real Postgres (see Tests)
 npm run validate      # runs the pipeline on validation/input photos and prints paid-call counts
+npm run spend         # AI cost per downloaded photo from live usage; set the SPEND_* prices in .env first
 ```
+
+### Tests
+
+`npm test` wipes and migrates the database in `TEST_DATABASE_URL`, so it must be its own database, never `DATABASE_URL` (the tests refuse to run if they match). With docker compose: `docker compose exec postgres createdb -U jphoto jphoto_test`. The tests stub Cashfree, so no keys are needed. CI runs the same checks (`.github/workflows/ci.yml`).
 
 ## Deploy
 

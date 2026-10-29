@@ -36,6 +36,13 @@
       "when": 1793278016428,
       "tag": "0004_shop_logo",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793283187625,
+      "tag": "0005_ai_spend",
+      "breakpoints": true
     }
   ]
 }

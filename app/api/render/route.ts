@@ -3,10 +3,11 @@ import { z } from "zod";
 import { addCreation } from "@/lib/account";
 import { currentUserId, unauthorized } from "@/lib/auth";
 import { MODEL_LOOKS_ON } from "@/lib/catalog";
-import { takeFree } from "@/lib/limits";
+import { takeUse } from "@/lib/limits";
 import { PIECE_TYPES, renderShot, STYLES } from "@/lib/pipeline";
 import { isId, loadCutout, saveShot } from "@/lib/renders";
 import { reportError } from "@/lib/report";
+import { trackSpend } from "@/lib/spend";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -25,12 +26,13 @@ export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Bad request" }, { status: 400 });
   const { cutoutId, piece, styleId, collection } = parsed.data;
-  const limited = await takeFree(userId, "preview", `${cutoutId}:${styleId}`);
+  const ref = `${cutoutId}:${styleId}`;
+  const limited = await takeUse(userId, "preview", ref);
   if (limited) return NextResponse.json({ error: limited, limited: true }, { status: 429 });
 
   try {
     const cutout = await loadCutout(userId, cutoutId);
-    const shot = await renderShot(cutout, piece, styleId);
+    const shot = await trackSpend(userId, "preview", ref, () => renderShot(cutout, piece, styleId));
     const stats = {
       styleId,
       accepted: shot.accepted,

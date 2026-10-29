@@ -17,9 +17,12 @@ function fromRgba(img: Rgba) {
   return sharp(img.data, { raw: { width: img.width, height: img.height, channels: 4 } });
 }
 
-/** Fix phone orientation and cap the size. Pixels are otherwise untouched so the gold tone stays true. */
+/**
+ * Fix phone orientation and cap the size. Pixels are otherwise untouched so the gold tone stays true.
+ * The pixel limit stops a small file that decodes to a huge image. 120 MP leaves room for 108 MP phone cameras.
+ */
 export async function prepareInput(buf: Buffer): Promise<Buffer> {
-  return sharp(buf).rotate().resize({ width: 2048, height: 2048, fit: "inside", withoutEnlargement: true }).png().toBuffer();
+  return sharp(buf, { limitInputPixels: 120_000_000 }).rotate().resize({ width: 2048, height: 2048, fit: "inside", withoutEnlargement: true }).png().toBuffer();
 }
 
 /** True if the image already has a transparent background (e.g. a PNG cutout from the jeweller). */

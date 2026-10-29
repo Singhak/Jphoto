@@ -1,6 +1,7 @@
 import { paidCreations } from "@/lib/account";
 import { currentUserId } from "@/lib/auth";
 import { pieceLabel } from "@/lib/catalog";
+import { takeUse } from "@/lib/limits";
 import { type PieceType, STYLES } from "@/lib/pipeline/presets";
 import { isId, readShot } from "@/lib/renders";
 import { reportError } from "@/lib/report";
@@ -22,6 +23,8 @@ export async function POST(req: Request) {
 
   const rows = await paidCreations(userId, ids);
   if (rows.length !== ids.length) return new Response("Some of these photos are not paid for yet.", { status: 402 });
+  const limited = await takeUse(userId, "zip");
+  if (limited) return new Response(limited, { status: 429 });
 
   const entries = rows.map((r) => {
     const style = STYLES.find((s) => s.id === r.styleId)?.label ?? r.styleId;

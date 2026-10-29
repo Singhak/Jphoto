@@ -3,6 +3,7 @@ import { z } from "zod";
 import { brochuresUnlocked, getBrochure, getShop } from "@/lib/account";
 import { currentUserId, unauthorized } from "@/lib/auth";
 import { brochurePdf } from "@/lib/brochure-pdf";
+import { takeUse } from "@/lib/limits";
 import { reportError } from "@/lib/report";
 
 export const runtime = "nodejs";
@@ -19,6 +20,8 @@ export async function POST(req: Request) {
   if (!(await brochuresUnlocked(userId))) return NextResponse.json({ error: "Brochures unlock after you download 15 photos." }, { status: 403 });
   const [brochure, shop] = await Promise.all([getBrochure(userId, parsed.data.collection), getShop(userId)]);
   if (!brochure || brochure.items.length === 0) return NextResponse.json({ error: "Choose at least one photo first." }, { status: 400 });
+  const limited = await takeUse(userId, "pdf");
+  if (limited) return NextResponse.json({ error: limited }, { status: 429 });
 
   try {
     const pdf = await brochurePdf(userId, brochure, shop);
