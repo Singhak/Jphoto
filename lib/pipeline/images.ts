@@ -74,6 +74,8 @@ export interface InputQuality {
   sharpness: number;
   /** The piece runs off the edge of the photo, so part of it is missing. */
   touchesEdge: boolean;
+  /** Share of the jewellery that is blown-out white (glare or a flash reflection), 0 to 1. */
+  glare: number;
 }
 
 /** Cheap checks on the upload, run before any paid AI call. */
@@ -85,11 +87,12 @@ export async function inputQuality(prepared: Buffer, rawCutout: Buffer): Promise
   const g = (await sharp(prepared).resize(width, height).removeAlpha().greyscale().raw().toBuffer()) as Buffer;
   const a = (await sharp(rawCutout).resize(width, height, { fit: "fill" }).ensureAlpha().extractChannel(3).raw().toBuffer()) as Buffer;
 
-  let sum = 0, sq = 0, n = 0;
+  let sum = 0, sq = 0, n = 0, blown = 0;
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
       const i = y * width + x;
       if (a[i] < 200) continue;
+      if (g[i] >= 250) blown++;
       const lap = g[i - 1] + g[i + 1] + g[i - width] + g[i + width] - 4 * g[i];
       sum += lap;
       sq += lap * lap;
@@ -102,7 +105,7 @@ export async function inputQuality(prepared: Buffer, rawCutout: Buffer): Promise
   for (let x = 0; x < width; x++) for (const y of [0, height - 1]) { border++; if (a[y * width + x] > 128) edge++; }
   for (let y = 0; y < height; y++) for (const x of [0, width - 1]) { border++; if (a[y * width + x] > 128) edge++; }
 
-  return { shortSide, sharpness, touchesEdge: edge / border > 0.01 };
+  return { shortSide, sharpness, touchesEdge: edge / border > 0.01, glare: n ? blown / n : 0 };
 }
 
 export interface PlacedLayer {

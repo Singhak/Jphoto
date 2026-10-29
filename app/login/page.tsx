@@ -31,7 +31,13 @@ export default function LoginPage() {
           <GoogleMark className="size-5" /> {busy ? "Opening Google…" : "Continue with Google"}
         </button>
         {error && <p className="mt-3 text-sm text-bad">{error}</p>}
-        <p className="mt-6 text-xs text-dim">Your photos are private to your account. Never used to train AI, never shown to anyone else.</p>
+        <div className="mt-6 flex gap-2.5 rounded-lg border border-line p-3 text-left text-xs text-dim">
+          <Icon.shield className="size-4 shrink-0 text-light" />
+          <p>
+            <span className="font-medium text-text">Your designs stay yours.</span> Photos are private to your account, never used to train AI and
+            never shown to anyone else, so unreleased pieces are safe to upload.
+          </p>
+        </div>
       </div>
       <div className="mx-auto w-full max-w-lg">
         <Showcase />

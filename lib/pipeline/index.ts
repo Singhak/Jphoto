@@ -43,6 +43,11 @@ const GEN = { width: 864, height: 1080 };
 const MIN_SHORT_SIDE = 600;
 /** Laplacian variance below this suggests a blurry photo. Starting guess: tune it on the validation photos. */
 const MIN_SHARPNESS = 60;
+/**
+ * Share of the piece that is pure white before we warn about glare. Diamonds and polished metal always
+ * have small sparkles, so only large blown-out patches count. Starting guess: tune it on the validation photos.
+ */
+const MAX_GLARE = 0.08;
 
 export interface Cutout {
   /** Trimmed RGBA PNG of just the jewellery. */
@@ -90,6 +95,7 @@ async function extractCutout(photo: Buffer, opts: ExtractOptions): Promise<Cutou
   if (mask.coverage < 0.005) problems.push("Could not find the jewellery. Fill more of the frame with the piece.");
   if (quality.touchesEdge) problems.push("Part of the piece is cut off at the edge of the photo. Leave some space around it.");
   if (quality.sharpness < MIN_SHARPNESS) warnings.push(`Photo may be blurry (sharpness ${quality.sharpness.toFixed(0)}). Hold the phone steady and tap to focus on the piece.`);
+  if (quality.glare > MAX_GLARE) warnings.push(`Strong glare on the piece (${Math.round(quality.glare * 100)}% is pure white). The glare will show in every photo, so move away from direct light or turn off the flash, and retake.`);
   if (mask.softEdgeRatio > 0.35) warnings.push("Cutout edges are very soft; thin chains or stones may be partly lost.");
   const rawPng = await trimToContent(raw);
   if (!(opts.complete ?? hasGeminiKey())) return { png: rawPng, rawPng, mask, quality, problems, warnings };

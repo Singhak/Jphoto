@@ -51,7 +51,7 @@ async function main() {
     return;
   }
   await mkdir(values.out!, { recursive: true });
-  const header = ["photo", "piece", "style", "engine", "accepted", "attempts", "psnr_db", "align", "judge_score", "removed_pct", "redrawn_pct", "seconds", "sharpness", "reject_reasons", "photo_problems", "photo_warnings", "error"];
+  const header = ["photo", "piece", "style", "engine", "accepted", "attempts", "psnr_db", "align", "judge_score", "removed_pct", "redrawn_pct", "seconds", "sharpness", "glare_pct", "reject_reasons", "photo_problems", "photo_warnings", "error"];
   const rows: string[][] = [header];
   const row = (r: Partial<Record<(typeof header)[number], unknown>>) => rows.push(header.map((h) => String(r[h] ?? "")));
 
@@ -80,7 +80,7 @@ async function main() {
       continue;
     }
     const c = cutout.completion;
-    const photoInfo = { removed_pct: c && (c.removed * 100).toFixed(1), redrawn_pct: c && (c.reconstructed * 100).toFixed(1), sharpness: cutout.quality.sharpness.toFixed(0), photo_problems: cutout.problems.join(" "), photo_warnings: cutout.warnings.join(" ") };
+    const photoInfo = { removed_pct: c && (c.removed * 100).toFixed(1), redrawn_pct: c && (c.reconstructed * 100).toFixed(1), sharpness: cutout.quality.sharpness.toFixed(0), glare_pct: (cutout.quality.glare * 100).toFixed(1), photo_problems: cutout.problems.join(" "), photo_warnings: cutout.warnings.join(" ") };
     if (cutout.problems.length && !values.force) {
       // In the app this is where the jeweller is asked to retake the photo, before any credit is used.
       row({ photo: file, piece, style: "-", accepted: false, ...photoInfo });
