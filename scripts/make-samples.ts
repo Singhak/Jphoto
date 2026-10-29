@@ -8,6 +8,7 @@
  * Put one photo per piece in samples/input, named by piece type (e.g. "ring.jpg", "necklace_2.jpg").
  * Use pieces you own the rights to show publicly: these images are served to every visitor.
  * Only shots that pass every check are kept. Saves to public/samples and records them in lib/samples.json.
+ * The phone photo is saved too (lib/sample-originals.json), for the before/after showcase on the login page.
  */
 import "dotenv/config";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
@@ -24,6 +25,7 @@ const { values } = parseArgs({
 });
 
 const MANIFEST = "lib/samples.json";
+const ORIGINALS = "lib/sample-originals.json";
 const styleIds = values.styles!.split(",").map((s) => s.trim()).filter(Boolean);
 for (const id of styleIds) if (!STYLES.some((s) => s.id === id)) throw new Error(`Unknown style "${id}". Options: ${STYLES.map((s) => s.id).join(", ")}`);
 
@@ -34,6 +36,7 @@ async function main() {
     return;
   }
   const manifest: Record<string, Partial<Record<PieceType, string>>> = JSON.parse(await readFile(MANIFEST, "utf8").catch(() => "{}"));
+  const originals: Partial<Record<PieceType, string>> = JSON.parse(await readFile(ORIGINALS, "utf8").catch(() => "{}"));
   let made = 0;
 
   for (const file of files) {
@@ -43,11 +46,16 @@ async function main() {
       continue;
     }
     console.log(`\n${file} (${piece})`);
-    const cutout = await extractJewellery(await readFile(path.join(values.in!, file)), { piece });
+    const photo = await readFile(path.join(values.in!, file));
+    const cutout = await extractJewellery(photo, { piece });
     if (cutout.problems.length) {
       console.log(`  x photo not usable: ${cutout.problems.join(" ")}`);
       continue;
     }
+    // The "before" in the showcase: the phone photo as taken, cropped to the same 4:5 frame as the shots.
+    await mkdir(path.join("public", "samples", "originals"), { recursive: true });
+    await writeFile(path.join("public", "samples", "originals", `${piece}.jpg`), await sharp(photo).rotate().resize({ width: 900, height: 1125, fit: "cover" }).jpeg({ quality: 84 }).toBuffer());
+    originals[piece] = `/samples/originals/${piece}.jpg`;
     const fits = new Set(stylesFor(piece).map((s) => s.id));
     for (const styleId of styleIds.filter((id) => fits.has(id))) {
       try {
@@ -58,8 +66,8 @@ async function main() {
         }
         const rel = `/samples/${styleId}/${piece}.jpg`;
         await mkdir(path.join("public", "samples", styleId), { recursive: true });
-        // Cards are small; 600px wide keeps the page light.
-        await writeFile(path.join("public", rel), await sharp(shot.png).resize({ width: 600 }).jpeg({ quality: 84 }).toBuffer());
+        // 900px wide: sharp enough for the large showcase, still light for the small look cards.
+        await writeFile(path.join("public", rel), await sharp(shot.png).resize({ width: 900 }).jpeg({ quality: 84 }).toBuffer());
         (manifest[styleId] ??= {})[piece] = rel;
         made++;
         console.log(`  ok   ${styleId} -> public${rel}`);
@@ -70,6 +78,7 @@ async function main() {
   }
 
   await writeFile(MANIFEST, JSON.stringify(manifest, null, 2) + "\n");
+  await writeFile(ORIGINALS, JSON.stringify(originals, null, 2) + "\n");
   const u = usageSummary();
   console.log(`\n${made} sample(s) saved. Paid calls: fal fill ${u["fal-fill"]} ($${u.falFillUsd.toFixed(2)}), Gemini image ${u["gemini-image"]}, Gemini checks ${u["gemini-check"]}.`);
 }

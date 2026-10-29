@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Icon } from "@/components/icons";
+import { hasShowcase, Showcase } from "@/components/Showcase";
 import { authClient } from "@/lib/auth-client";
 import { BRAND } from "@/lib/brand";
 
@@ -21,8 +22,8 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-dvh items-center justify-center px-4">
-      <div className="panel w-full max-w-sm p-6 text-center sm:p-8">
+    <main className={`mx-auto grid min-h-dvh items-center gap-6 px-4 py-8 ${hasShowcase ? "max-w-5xl lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)] lg:gap-10" : "max-w-sm"}`}>
+      <div className="panel w-full p-6 text-center sm:p-8">
         <Icon.logo className="mx-auto size-10 text-light" />
         <h1 className="mt-4 font-head text-3xl font-bold tracking-tight">{BRAND.name}</h1>
         <p className="mt-1 text-dim">{BRAND.tagline}</p>
@@ -31,6 +32,9 @@ export default function LoginPage() {
         </button>
         {error && <p className="mt-3 text-sm text-bad">{error}</p>}
         <p className="mt-6 text-xs text-dim">Your photos are private to your account. Never used to train AI, never shown to anyone else.</p>
+      </div>
+      <div className="mx-auto w-full max-w-lg">
+        <Showcase />
       </div>
     </main>
   );
