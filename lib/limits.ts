@@ -1,4 +1,5 @@
 import { and, count, eq, gte, sql } from "drizzle-orm";
+import { BRAND } from "./brand";
 import { db } from "./db";
 import { usageEvents } from "./db/schema";
 
@@ -27,7 +28,7 @@ export type UseKind = "check" | "preview" | "pdf" | "zip" | "order";
 const daily: Record<UseKind, () => { max: number; message: string }> = {
   check: () => ({
     max: LIMITS.checksPerDay,
-    message: `You've checked ${LIMITS.checksPerDay} photos in the last 24 hours, the daily limit. Try again tomorrow, or message us on WhatsApp for more.`,
+    message: `You've checked ${LIMITS.checksPerDay} photos in the last 24 hours, the daily limit. Try again tomorrow, or email ${BRAND.legal.email} for more.`,
   }),
   preview: () => ({
     max: LIMITS.previewsPerDay,
@@ -35,7 +36,7 @@ const daily: Record<UseKind, () => { max: number; message: string }> = {
   }),
   pdf: () => ({
     max: LIMITS.pdfsPerDay,
-    message: `You've made ${LIMITS.pdfsPerDay} brochure PDFs in the last 24 hours, the daily limit. Try again tomorrow, or message us on WhatsApp.`,
+    message: `You've made ${LIMITS.pdfsPerDay} brochure PDFs in the last 24 hours, the daily limit. Try again tomorrow, or email ${BRAND.legal.email}.`,
   }),
   zip: () => ({
     max: LIMITS.zipsPerDay,
@@ -43,7 +44,7 @@ const daily: Record<UseKind, () => { max: number; message: string }> = {
   }),
   order: () => ({
     max: LIMITS.ordersPerDay,
-    message: `You've started ${LIMITS.ordersPerDay} payments in the last 24 hours, the daily limit. Message us on WhatsApp and we'll help.`,
+    message: `You've started ${LIMITS.ordersPerDay} payments in the last 24 hours, the daily limit. Email ${BRAND.legal.email} and we'll help.`,
   }),
 };
 

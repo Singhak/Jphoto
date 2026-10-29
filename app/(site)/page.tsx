@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Icon, PieceIcon } from "@/components/icons";
 import { Showcase } from "@/components/Showcase";
 import { hasShowcase } from "@/lib/showcase";
-import { BRAND, whatsappLink } from "@/lib/brand";
+import { BRAND, emailLink } from "@/lib/brand";
 import { inr, MODEL_LOOKS_ON, STYLE_LOOKS, TOP_UPS, WELCOME_CREDITS } from "@/lib/catalog";
 import { STYLES } from "@/lib/pipeline/presets";
 
@@ -38,7 +38,7 @@ const QUESTIONS = [
   ["What if a photo looks wrong?", "Previews are free, so skip it or make it again. If you already downloaded it, flag it in the app: we check it and return the photo to your balance if the piece differs."],
   ["Are my designs private?", "Yes. Your photos stay in your account, are never shown to other users, and are never used to train AI. Unreleased pieces are safe to upload."],
   ["How do I pay?", `Buy photos in packs by UPI, card or netbanking. Prices include all taxes and photos never expire. Every account starts with ${WELCOME_CREDITS} free photos.`],
-  ["Can I talk to someone in Hindi?", "Haan. Message us on WhatsApp in Hindi or English."],
+  ["Can I talk to someone in Hindi?", `Haan. Email us at ${BRAND.legal.email} in Hindi or English.`],
 ];
 
 export default function Home() {
@@ -163,8 +163,8 @@ export default function Home() {
           <Link href="/studio" className="btn-light px-6 py-3 text-base">
             Try it with {WELCOME_CREDITS} free photos
           </Link>
-          <a href={whatsappLink("Hi, I have a question about Jphoto")} target="_blank" rel="noreferrer" className="btn-quiet px-5 py-3 text-base">
-            <Icon.whatsapp className="size-4" /> Ask on WhatsApp
+          <a href={emailLink(`A question about ${BRAND.name}`)} className="btn-quiet px-5 py-3 text-base">
+            Ask us a question
           </a>
         </div>
       </section>

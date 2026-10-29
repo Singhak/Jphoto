@@ -59,6 +59,6 @@ The `Dockerfile` builds one container that applies migrations on start. Give it 
 
 Before launch:
 
-1. Replace the bracketed business details in `lib/brand.ts` (legal pages and Cashfree KYC read them) and the WhatsApp number.
+1. Check the business details in `lib/brand.ts` match Infynetic's Cashfree KYC (legal pages read them).
 2. Set Cashfree production keys and `CASHFREE_ENV=production`. Each order tells Cashfree to call `{BETTER_AUTH_URL}/api/payments/webhook`, which must be https.
 3. Run `npm run samples` once the AI keys work, so the landing and login pages show real before/after photos.

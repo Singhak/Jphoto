@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/icons";
-import { whatsappLink } from "@/lib/brand";
+import { emailLink } from "@/lib/brand";
 import { useStore } from "@/lib/store";
 import { type Theme, useTheme } from "@/lib/theme";
 
@@ -159,9 +159,9 @@ export default function SettingsPage() {
         <Icon.help className="size-6 shrink-0 text-dim" />
         <div className="flex-1">
           <p className="text-sm font-semibold">Stuck on something?</p>
-          <p className="text-sm text-dim">Message us on WhatsApp with a screenshot.</p>
+          <p className="text-sm text-dim">Email us with a screenshot.</p>
         </div>
-        <a href={whatsappLink()} target="_blank" rel="noreferrer" className="btn-quiet">Message</a>
+        <a href={emailLink()} className="btn-quiet">Email</a>
       </div>
 
       <div className="panel p-5">

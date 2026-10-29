@@ -59,7 +59,7 @@ export default function PrivacyPage() {
       </Section>
 
       <Section title="Grievance officer">
-        <p>{legal.grievanceOfficer}, {legal.entity}, {legal.address}. Email: {legal.email}. We acknowledge complaints within 24 hours and resolve them within 15 days.</p>
+        <p>{legal.grievanceOfficer}, {legal.entity}. Email: {legal.email}. We acknowledge complaints within 24 hours and resolve them within 15 days.</p>
       </Section>
 
       <Section title="Changes">

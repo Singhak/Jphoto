@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BRAND, whatsappLink } from "@/lib/brand";
+import { BRAND, emailLink } from "@/lib/brand";
 import { useStore } from "@/lib/store";
 import { useTheme } from "@/lib/theme";
 import { Icon } from "./icons";
@@ -51,7 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             {resolved === "dark" ? <Icon.sun className="size-5" /> : <Icon.moon className="size-5" />}
           </button>
-          <a href={whatsappLink()} target="_blank" rel="noreferrer" className="hidden rounded-lg p-2 text-dim hover:text-text sm:block" aria-label="Help on WhatsApp">
+          <a href={emailLink()} className="hidden rounded-lg p-2 text-dim hover:text-text sm:block" aria-label="Email us for help">
             <Icon.help className="size-5" />
           </a>
           <Link href="/settings" className={`rounded-lg p-2 hover:text-text ${active("/settings") ? "text-text" : "text-dim"}`} aria-label="Settings">

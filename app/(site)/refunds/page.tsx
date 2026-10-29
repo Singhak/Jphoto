@@ -37,7 +37,7 @@ export default function RefundsPage() {
       </Section>
 
       <Section title="Ask for a refund">
-        <p>Email {legal.email} or message us on WhatsApp with the email you sign in with and the order date.</p>
+        <p>Email {legal.email} with the email you sign in with and the order date.</p>
       </Section>
     </LegalPage>
   );

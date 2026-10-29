@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Icon } from "@/components/icons";
-import { BRAND, whatsappLink } from "@/lib/brand";
+import { BRAND, emailLink } from "@/lib/brand";
 
 /** Public pages: the landing page and the legal pages Cashfree needs. No sign-in required. */
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
@@ -29,14 +29,16 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
               <Icon.logo className="size-5 text-light" /> {BRAND.name}
             </p>
             <p className="mt-1">Catalogue photos for jewellers. Your design, never redrawn.</p>
-            <p className="mt-3 text-xs">© {new Date().getFullYear()} {BRAND.legal.entity}</p>
+            <p className="mt-3 text-xs">
+              {BRAND.name} is a product of {BRAND.legal.entity}. © {new Date().getFullYear()} {BRAND.legal.entity}
+            </p>
           </div>
           <nav className="flex flex-wrap gap-x-5 gap-y-2 sm:justify-end">
             <Link href="/contact" className="hover:text-text">Contact</Link>
             <Link href="/privacy" className="hover:text-text">Privacy</Link>
             <Link href="/terms" className="hover:text-text">Terms</Link>
             <Link href="/refunds" className="hover:text-text">Refunds</Link>
-            <a href={whatsappLink()} target="_blank" rel="noreferrer" className="hover:text-text">WhatsApp</a>
+            <a href={emailLink()} className="hover:text-text">Email us</a>
           </nav>
         </div>
       </footer>
